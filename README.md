@@ -12,6 +12,7 @@ Per ogni album l'app tiene solo **copertina, titolo, artista e anno**. Dove asco
 - **Filtro e ordinamento**: sopra la lista puoi filtrare mentre scrivi (titolo, artista o anno) e ordinare per data, artista, titolo o anno.
 - **Gesti**: nella vista a lista scorri un album **verso destra** per segnarlo come ascoltato (in *Ascoltati*: per rimetterlo da ascoltare) e **verso sinistra** per eliminarlo. Subito dopo puoi toccare *Annulla*.
 - **Cosa ascolto adesso?**: il dado accanto all'ordinamento pesca un album a caso tra quelli da ascoltare (se hai scritto un filtro, tra quelli filtrati). Non ti convince? *Pesca un altro*.
+- **Aggiungere dal link copiato**: copia il link di un album (per esempio da una chat), tocca **+** e poi **Aggiungi dal link copiato**: l'album va dritto in *Da ascoltare*, con *Annulla*. Funziona con Spotify, Apple Music, Deezer e Bandcamp; se l'album c'è già, l'app te lo dice.
 - **Aggiungere da altre app**: da Spotify, Apple Music, Deezer, Bandcamp o dal browser tocca *Condividi* → **Ascolti**. L'app legge il link e mette l'album in cima ai risultati, con sotto la ricerca normale nel caso abbia letto male. Con i siti che non riconosce cerca il titolo della pagina.
 - **Eliminare più album insieme**: tieni premuto un album, tocca gli altri che vuoi togliere (o *Tutti*) e poi **Elimina**. Funziona in entrambe le liste, e subito dopo puoi ancora toccare *Annulla*.
 - **Tema scuro o chiaro**, dalle Impostazioni (i tre puntini in alto).

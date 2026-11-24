@@ -995,7 +995,9 @@ function parseAlbumPage(url, html) {
   const desc = get('og:description');
   const cover = get('og:image');
   const release = yearIn(get('music:release_date'));
-  let title = '', artist = '', year = release;
+  let title = '', artist = '', year = release, type = '';
+  // "Album", "Singolo"/"Single", "EP" nella descrizione (Spotify, Apple Music, Deezer)
+  const typeIn = (s) => (/\b(singolo|single)\b/i.test(s) ? 'single' : /\bEP\b/.test(s) ? 'ep' : '');
 
   if (host.endsWith('spotify.com')) {
     // Album: "Kid A - Album by Radiohead | Spotify" + "Radiohead · album · 2000 · 11 songs"
@@ -1005,6 +1007,7 @@ function parseAlbumPage(url, html) {
       artist = parts[0]; title = parts[1];
     } else {
       artist = parts[0] || '';
+      type = typeIn(parts[1] || '');
       title = ogTitle.replace(/^(Listen to|Ascolta|Escucha|Écouter|Hör dir)\s+/i, '')
         .replace(/\s+-\s+(Album|EP|Single|Singolo|Compilation).*$/i, '').replace(/\s*\|\s*Spotify$/i, '');
     }
@@ -1014,11 +1017,13 @@ function parseAlbumPage(url, html) {
     const m = ogTitle.match(/^(.*)\s+(?:di|by|von|de|par)\s+(.*?)\s+(?:su|on|auf|en|sur)\s+Apple Music$/i);
     if (m) { title = m[1]; artist = m[2]; } else title = ogTitle;
     year = year || yearIn(desc);
+    type = typeIn(desc);
   } else if (host.endsWith('deezer.com')) {
     // "Kid A" + "Radiohead - album - 2000 - 11 canzoni"
     title = ogTitle;
     artist = desc.split(' - ')[0] || '';
     year = year || yearIn(desc);
+    type = typeIn(desc);
   } else if (host.endsWith('bandcamp.com')) {
     // "Mother Earth's Plantasia, by Mort Garson"
     const m = ogTitle.match(/^(.*),\s+by\s+(.*)$/);
@@ -1032,7 +1037,7 @@ function parseAlbumPage(url, html) {
   }
   title = title.trim(); artist = artist.trim();
   if (!title) return null;
-  return { album: { source: 'link', sourceId: url, title, artist, year, cover, type: '' } };
+  return { album: { source: 'link', sourceId: canonicalLink(url), title, artist, year, cover, type } };
 }
 
 // Se la pagina non si legge (per esempio un controllo anti-bot), qualcosa si ricava dall'indirizzo:
@@ -1059,43 +1064,117 @@ function cleanSharedUrl(raw) {
   } catch { return raw; }
 }
 
+// Identità stabile di un link: senza "?si=…", "intl-it" e simili, così lo stesso album copiato due volte è riconosciuto
+function canonicalLink(raw) {
+  try {
+    const u = new URL(raw);
+    const path = u.pathname.replace(/^\/intl-[a-z]{2}(-[a-z]{2})?\//i, '/').replace(/\/$/, '');
+    return `${u.hostname.replace(/^www\./, '')}${path}`;
+  } catch { return raw; }
+}
+
+// Legge un link e ne ricava l'album ({ album }) o almeno un testo da cercare ({ query }); null se non c'è niente
+async function readLink(url) {
+  let parsed = null;
+  try {
+    // Come un normale Chrome per Android: i siti musicali rispondono con la pagina completa di metadati
+    // (alla WebView dell'app, Spotify risponde con la pagina che apre la sua app)
+    const r = await fetch(url, { headers: { Accept: 'text/html', 'Accept-Language': 'it-IT,it;q=0.9,en;q=0.8', 'User-Agent': BROWSER_UA } });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    // Il sito si riconosce dal link, non dall'indirizzo finale dopo eventuali reindirizzamenti
+    parsed = parseAlbumPage(url, await r.text());
+  } catch {}
+  if (parsed?.album) return parsed;
+  const query = parsed?.query || queryFromUrl(url);
+  return query ? { query } : null;
+}
+
+const firstUrl = (text) => {
+  const found = (String(text || '').match(/https?:\/\/[^\s<>"']+/) || [])[0];
+  return found ? cleanSharedUrl(found) : '';
+};
+
+// Mostra la ricerca: album del link (se riconosciuto) in cima, poi i risultati per titolo e artista
+function showLinkSearch(read, url) {
+  linkResult = read?.album || null;
+  const query = linkResult ? `${linkResult.title} ${linkResult.artist}` : read?.query || '';
+  if (query) {
+    $('#q').value = query.trim(); syncClear(); renderPasteButton();
+    runSearch();
+  } else {
+    $('#status').textContent = url
+      ? 'Non riesco a riconoscere l’album da questo link: scrivi qui sopra titolo o artista.'
+      : '';
+    setTimeout(() => $('#q').focus(), 60);
+  }
+}
+
+// "Condividi → Ascolti" da un'altra app: apre la ricerca con l'album del link in cima
 async function handleShared(text) {
   if (!text) return;
-  const found = (String(text).match(/https?:\/\/[^\s<>"']+/) || [])[0];
-  const url = found ? cleanSharedUrl(found) : '';
+  const url = firstUrl(text);
   while (stack.length) closeLayer();
   exitSelection();
   openLayer('search');
   linkResult = null;
-  results = []; renderResults();
-  const status = $('#status');
+  results = []; renderResults(); renderPasteButton();
   if (!url) {
     $('#q').value = String(text).trim().slice(0, 120); syncClear();
     runSearch();
     return;
   }
   $('#q').value = ''; syncClear();
-  status.innerHTML = '<span class="spinner"></span>Leggo il link…';
-  let parsed = null;
+  $('#status').innerHTML = '<span class="spinner"></span>Leggo il link…';
+  showLinkSearch(await readLink(url), url);
+}
+
+/* ---------- Aggiungi dal link copiato (appunti) ---------- */
+async function readClipboard() {
   try {
-    // Come un normale Chrome per Android: i siti musicali rispondono con la pagina completa di metadati
-    // (alla WebView dell'app Spotify risponde con la pagina che apre la sua app)
-    const r = await fetch(url, { headers: { Accept: 'text/html', 'Accept-Language': 'it-IT,it;q=0.9,en;q=0.8', 'User-Agent': BROWSER_UA } });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    // Il sito si riconosce dal link condiviso, non dall'indirizzo finale dopo eventuali reindirizzamenti
-    parsed = parseAlbumPage(url, await r.text());
-  } catch {}
-  // Album riconosciuto (Spotify, Apple Music, Deezer, Bandcamp): in cima ai risultati, con la ricerca sotto.
-  // Altrimenti si cerca il titolo della pagina, o le parole dell'indirizzo.
-  linkResult = parsed?.album || null;
-  const query = linkResult ? `${linkResult.title} ${linkResult.artist}` : parsed?.query || queryFromUrl(url);
-  if (query) {
-    $('#q').value = query.trim(); syncClear();
-    runSearch();
-  } else {
-    status.textContent = 'Non riesco a riconoscere l’album da questo link: scrivi qui sopra titolo o artista.';
-    setTimeout(() => $('#q').focus(), 60);
+    if (Plugins.Clipboard) return (await Plugins.Clipboard.read()).value || '';
+    return await navigator.clipboard.readText();
+  } catch { return ''; }
+}
+
+const sameAlbum = (a, b) => tokens(a.title).join(' ') === tokens(b.title).join(' ')
+  && tokens(a.artist).join(' ') === tokens(b.artist).join(' ');
+
+// Legge il link negli appunti e, se riconosce l'album, lo aggiunge subito a "Da ascoltare" (con Annulla).
+// Se il link non basta, apre la ricerca già compilata.
+async function pasteLink() {
+  const status = $('#status');
+  const url = firstUrl(await readClipboard());
+  if (!url) {
+    toast('Negli appunti non c’è un link: copialo e riprova');
+    return;
   }
+  status.innerHTML = '<span class="spinner"></span>Leggo il link copiato…';
+  $('#paste-link').disabled = true;
+  const read = await readLink(url);
+  $('#paste-link').disabled = false;
+  status.textContent = '';
+  const album = read?.album;
+  if (!album) { showLinkSearch(read, url); return; }
+
+  const id = `link:${album.sourceId}`;
+  const existing = albums.find((a) => a.id === id || sameAlbum(a, album));
+  if (existing) {
+    toast(existing.listenedAt ? `«${existing.title}» è già tra gli ascoltati` : `«${existing.title}» è già in lista`);
+    return;
+  }
+  const a = { id, ...album, addedAt: Date.now(), listenedAt: null };
+  albums.push(a);
+  saveAlbums();
+  while (stack.length) closeLayer();
+  tab = 'todo'; render();
+  toast(`Aggiunto: ${a.title}${a.artist ? ` · ${a.artist}` : ''}`, () => {
+    albums = albums.filter((x) => x.id !== id); saveAlbums(); render();
+  });
+}
+
+// Il pulsante compare solo a ricerca vuota, per non mescolarsi ai risultati
+function renderPasteButton() {
+  $('#paste-row').hidden = !!$('#q').value.trim();
 }
 
 const ShareReceiver = Plugins.ShareReceiver || null;
@@ -1126,13 +1205,13 @@ document.addEventListener('click', (e) => {
     case 'delete': deleteAlbum(id, el); break;
     case 'close': closeLayer(); break;
     case 'open-search':
-      openLayer('search'); renderResults(); syncClear();
+      openLayer('search'); renderResults(); syncClear(); renderPasteButton();
       setTimeout(() => $('#q').focus(), 60);
       break;
     case 'add': addResult(+el.dataset.i, el); break;
     case 'clear-search': // "x": svuota testo e risultati, la tastiera resta aperta per una nuova ricerca
       clearTimeout(searchTimer); searchSeq++;
-      $('#q').value = ''; syncClear(); linkResult = null;
+      $('#q').value = ''; syncClear(); linkResult = null; renderPasteButton();
       results = []; renderResults(); $('#status').textContent = '';
       $('#q').focus();
       break;
@@ -1145,6 +1224,7 @@ document.addEventListener('click', (e) => {
     }
     case 'pick-cover': openCoverPicker(); break;
     case 'random': pickRandom(); break;
+    case 'paste-link': pasteLink(); break;
     case 'random-again': closeLayer(); pickRandom(); break;
     case 'choose-cover': chooseCover(+el.dataset.i); break;
     case 'remove-cover': form.cover = ''; renderFormCover(); break;
@@ -1195,7 +1275,7 @@ $('#manual-form').elements.title.addEventListener('input', () => { if (!form.cov
 
 const syncClear = () => { $('#q-clear').hidden = !$('#q').value; };
 $('#q').addEventListener('input', () => {
-  syncClear();
+  syncClear(); renderPasteButton();
   linkResult = null;
   clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 450);
 });
