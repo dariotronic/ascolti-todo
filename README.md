@@ -10,6 +10,7 @@ Per ogni album l'app tiene solo **copertina, titolo, artista e anno**. Dove asco
   <img src="docs/screenshots/02-schede.jpg" width="250" alt="Vista a schede, due per riga">
   <img src="docs/screenshots/03-schede-chiaro.jpg" width="250" alt="Tema chiaro con tre schede per riga">
 </p>
+
 ## Cosa fa
 
 ### Aggiungere un album
