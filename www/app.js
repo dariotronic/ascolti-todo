@@ -49,11 +49,18 @@ const ICON = {
 
 function coverHtml(a) {
   const initial = esc((a.title || '?').trim().charAt(0).toUpperCase());
-  return `<div class="cover">${a.cover ? `<img loading="lazy" src="${esc(a.cover)}" alt="">` : initial}</div>`;
+  const src = a.cover || a.coverAlt;
+  const alt = a.cover && a.coverAlt ? ` data-alt="${esc(a.coverAlt)}"` : '';
+  return `<div class="cover">${src ? `<img loading="lazy" src="${esc(src)}"${alt} alt="">` : initial}</div>`;
 }
-// Copertina mancante (404): resta l'iniziale
+// Copertina mancante (404): prima quella di riserva, se c'è, poi l'iniziale
 document.addEventListener('error', (e) => {
   const img = e.target;
+  if (img.tagName === 'IMG' && img.dataset.alt) {
+    img.src = img.dataset.alt;
+    delete img.dataset.alt;
+    return;
+  }
   if (img.tagName === 'IMG' && img.parentElement?.classList.contains('cover')) {
     const box = img.parentElement;
     img.remove();
@@ -179,11 +186,11 @@ async function getJson(url, opts = {}) {
   return r.json();
 }
 
-// In ordine: si passa al successivo solo se il precedente non trova nulla
+// Fonti interrogate tutte insieme a ogni ricerca (ordine = priorità per copertina e risultati a pari merito)
 const ENGINES = [
   // iTunes Search di Apple: titolo, artista, anno e copertina in una sola richiesta
   async function itunes(q) {
-    const j = await getJson(`https://itunes.apple.com/search?entity=album&country=IT&limit=20&term=${encodeURIComponent(q)}`);
+    const j = await getJson(`https://itunes.apple.com/search?entity=album&country=IT&limit=25&term=${encodeURIComponent(q)}`);
     return (j.results || []).filter((r) => r.collectionId).map((r) => {
       let title = r.collectionName || '';
       let type = '';
@@ -197,7 +204,7 @@ const ENGINES = [
     });
   },
   async function deezer(q) {
-    const j = await getJson(`https://api.deezer.com/search/album?limit=20&q=${encodeURIComponent(q)}`);
+    const j = await getJson(`https://api.deezer.com/search/album?limit=25&q=${encodeURIComponent(q)}`);
     if (j.error) throw new Error(j.error.message);
     return (j.data || []).map((a) => ({
       source: 'deezer', sourceId: String(a.id), title: a.title,
@@ -207,9 +214,17 @@ const ENGINES = [
     }));
   },
   async function musicbrainz(q) {
-    const j = await getJson(`https://musicbrainz.org/ws/2/release-group?fmt=json&limit=20&query=${encodeURIComponent(q)}`, {
-      headers: { 'User-Agent': UA, Accept: 'application/json' },
-    });
+    const url = `https://musicbrainz.org/ws/2/release-group?fmt=json&limit=25&query=${encodeURIComponent(q)}`;
+    const opts = { headers: { 'User-Agent': UA, Accept: 'application/json' } };
+    let j;
+    try {
+      j = await getJson(url, opts);
+    } catch (e) {
+      // MusicBrainz accetta una richiesta al secondo: se dice "troppe richieste" (503) riprova una volta
+      if (!/HTTP 503/.test(e.message)) throw e;
+      await new Promise((r) => setTimeout(r, 1200));
+      j = await getJson(url, opts);
+    }
     return (j['release-groups'] || []).map((g) => ({
       source: 'musicbrainz', sourceId: g.id, title: g.title,
       artist: (g['artist-credit'] || []).map((c) => (c.name || c.artist?.name || '') + (c.joinphrase || '')).join(''),
@@ -228,7 +243,84 @@ async function enrichDeezerYear(a) {
   } catch {}
 }
 
+/* ---------- Unione e ordinamento dei risultati ---------- */
+// Parole che indicano un'edizione dello stesso album: pesano meno delle parole "estranee"
+const QUALIFIERS = new Set(['live', 'remaster', 'remastered', 'deluxe', 'edition', 'version', 'anniversary', 'expanded',
+  'bonus', 'mono', 'stereo', 'reissue', 'edizione', 'remix', 'remixes', 'ep', 'single', 'track', 'tracks']);
+const STOPWORDS = new Set(['the', 'a', 'an', 'of', 'and', 'il', 'lo', 'la', 'i', 'gli', 'le', 'di', 'e']);
+
+function tokens(s) {
+  return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .split(/[^a-z0-9]+/).filter(Boolean);
+}
+
+// Titolo "di base", senza indicazioni di edizione: "Abbey Road (Remastered 2009)" → "abbey road"
+const baseTitle = (title) => tokens(title).filter((t) => !QUALIFIERS.has(t) && !/^\d+$/.test(t)).join(' ');
+
+// Lo stesso album da più fonti diventa un solo risultato: copertina dalla fonte più affidabile
+// (le liste arrivano in ordine iTunes, Deezer, MusicBrainz) e l'anno più vecchio, cioè quello dell'uscita originale.
+// Per ogni album conta anche quante fonti lo conoscono (edizioni comprese): è un buon indizio di quello "giusto".
+function mergeResults(lists) {
+  const byKey = new Map();
+  const groups = new Map(); // titolo di base + artista → { fonti, copertina di riserva }
+  lists.forEach((list, engineIdx) => list.forEach((r, pos) => {
+    const artist = tokens(r.artist).join(' ');
+    const groupKey = baseTitle(r.title) + '|' + artist;
+    const group = groups.get(groupKey) || { sources: new Set(), cover: '' };
+    group.sources.add(engineIdx);
+    if (!group.cover && r.cover && r.source !== 'musicbrainz') group.cover = r.cover;
+    groups.set(groupKey, group);
+
+    const key = tokens(r.title).join(' ') + '|' + artist;
+    const prev = byKey.get(key);
+    if (!prev) { byKey.set(key, { ...r, engineIdx, pos, groupKey }); return; }
+    if (!prev.cover && r.cover) prev.cover = r.cover;
+    if (r.year && (!prev.year || r.year < prev.year)) prev.year = r.year;
+    prev.pos = Math.min(prev.pos, pos);
+  }));
+  return [...byKey.values()].map((r) => {
+    const group = groups.get(r.groupKey);
+    const { groupKey, ...rest } = r;
+    // Le copertine di MusicBrainz a volte mancano: di riserva quella di un'altra edizione dello stesso album
+    const coverAlt = r.source === 'musicbrainz' && group.cover && group.cover !== r.cover ? group.cover : '';
+    return { ...rest, sources: group.sources.size, ...(coverAlt ? { coverAlt } : {}) };
+  });
+}
+
+// Quanto un risultato corrisponde a ciò che è stato cercato
+function relevance(r, Q) {
+  const T = tokens(r.title), A = tokens(r.artist);
+  const matches = (t, qt) => t === qt || (qt.length >= 3 && t.startsWith(qt));
+  const inQuery = (t) => Q.some((qt) => matches(t, qt));
+  const covered = Q.filter((qt) => T.some((t) => matches(t, qt)) || A.some((t) => matches(t, qt))).length / Q.length;
+  const extra = T.filter((t) => !inQuery(t) && !STOPWORDS.has(t));
+  const extraQualifiers = extra.filter((t) => QUALIFIERS.has(t) || /^\d+$/.test(t)).length;
+  const extraWords = extra.length - extraQualifiers;
+
+  let score = 4 * covered;                                    // quante parole cercate ci sono
+  if (T.some(inQuery) && extraWords === 0) score += 2;       // il titolo è proprio quello cercato
+  if (A.some(inQuery)) {                                      // l'artista è tra le parole cercate…
+    score += 0.5;
+    score -= 0.2 * A.filter((t) => !inQuery(t) && !STOPWORDS.has(t)).length; // …ma con altre parole nel nome
+  }
+  score += 0.4 * Math.min((r.sources || 1) - 1, 2);           // conosciuto da più fonti
+  score -= 0.6 * Math.min(extraWords, 5);                     // parole nel titolo che non hai scritto
+  score -= 0.3 * Math.min(extraQualifiers, 3);                // "Live", "Remastered", "2016"…
+  if (r.type) score -= 0.5;                                   // singoli ed EP dopo gli album
+  return score - r.pos * 0.01;                                // a parità, l'ordine delle fonti
+}
+
+function rankResults(lists, q) {
+  const Q = [...new Set(tokens(q))];
+  return mergeResults(lists)
+    .map((r) => ({ r, s: Q.length ? relevance(r, Q) : -r.pos }))
+    .sort((a, b) => b.s - a.s || a.r.engineIdx - b.r.engineIdx)
+    .map((x) => x.r)
+    .slice(0, 60);
+}
+
 /* ---------- Schermata di ricerca ---------- */
+
 let results = [];
 let searchSeq = 0;
 let searchTimer;
@@ -247,6 +339,7 @@ function renderResults() {
   }).join('');
 }
 
+// Interroga tutte le fonti insieme e aggiorna la lista man mano che rispondono
 async function runSearch() {
   const q = $('#q').value.trim();
   const status = $('#status');
@@ -254,21 +347,21 @@ async function runSearch() {
   if (q.length < 2) { results = []; renderResults(); status.textContent = ''; return; }
 
   status.innerHTML = '<span class="spinner"></span>Cerco…';
-  let found = [], failures = 0;
-  for (const engine of ENGINES) {
-    try {
-      found = await engine(q);
-      if (seq !== searchSeq) return;
-      if (found.length) break;
-    } catch {
-      failures++;
-    }
-  }
-  if (seq !== searchSeq) return;
-  results = found;
-  renderResults();
-  status.textContent = found.length ? ''
-    : failures === ENGINES.length ? 'Ricerca non riuscita. Controlla la connessione.' : 'Nessun risultato.';
+  const lists = ENGINES.map(() => []);
+  let pending = ENGINES.length, failures = 0;
+  const update = () => {
+    if (seq !== searchSeq) return;
+    results = rankResults(lists, q);
+    renderResults();
+    if (pending) status.innerHTML = '<span class="spinner"></span>Cerco…';
+    else status.textContent = results.length ? ''
+      : failures === ENGINES.length ? 'Ricerca non riuscita. Controlla la connessione.' : 'Nessun risultato.';
+  };
+  await Promise.all(ENGINES.map(async (engine, i) => {
+    try { lists[i] = await engine(q); } catch { failures++; }
+    pending--;
+    update();
+  }));
 }
 
 function addResult(i, btn) {
@@ -280,7 +373,8 @@ function addResult(i, btn) {
     albums.splice(existing, 1);
     btn.classList.remove('on'); btn.innerHTML = `<i>${ICON.plus}</i>`;
   } else {
-    const a = { id, ...r, addedAt: Date.now(), listenedAt: null };
+    const { engineIdx, pos, sources, ...data } = r; // campi solo per l'ordinamento
+    const a = { id, ...data, addedAt: Date.now(), listenedAt: null };
     albums.push(a);
     btn.classList.add('on'); btn.innerHTML = `<i>${ICON.check}</i>`;
     if (a.source === 'deezer' && !a.year) enrichDeezerYear(a);
@@ -459,10 +553,16 @@ document.addEventListener('click', (e) => {
     case 'delete': deleteAlbum(id, el); break;
     case 'close': closeLayer(); break;
     case 'open-search':
-      openLayer('search'); renderResults();
+      openLayer('search'); renderResults(); syncClear();
       setTimeout(() => $('#q').focus(), 60);
       break;
     case 'add': addResult(+el.dataset.i, el); break;
+    case 'clear-search': // "x": svuota testo e risultati, la tastiera resta aperta per una nuova ricerca
+      clearTimeout(searchTimer); searchSeq++;
+      $('#q').value = ''; syncClear();
+      results = []; renderResults(); $('#status').textContent = '';
+      $('#q').focus();
+      break;
     case 'open-manual': {
       const f = $('#manual-form'); f.reset();
       f.elements.title.value = $('#q').value.trim();
@@ -483,7 +583,11 @@ document.addEventListener('click', (e) => {
   }
 });
 
-$('#q').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 450); });
+const syncClear = () => { $('#q-clear').hidden = !$('#q').value; };
+$('#q').addEventListener('input', () => {
+  syncClear();
+  clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 450);
+});
 $('#q').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { clearTimeout(searchTimer); runSearch(); e.target.blur(); }
 });

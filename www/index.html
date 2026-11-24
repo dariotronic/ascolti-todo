@@ -34,7 +34,12 @@
       <button class="icon-btn" data-act="close" aria-label="Indietro">
         <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
       </button>
-      <input id="q" type="search" placeholder="Album o artista" autocomplete="off" enterkeyhint="search" />
+      <div class="search-field">
+        <input id="q" type="search" placeholder="Album o artista" autocomplete="off" enterkeyhint="search" />
+        <button class="clear-btn" id="q-clear" data-act="clear-search" aria-label="Cancella la ricerca" hidden>
+          <svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>
+        </button>
+      </div>
     </header>
     <p class="status" id="status"></p>
     <ul class="list" id="results"></ul>
