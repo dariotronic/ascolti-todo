@@ -431,3 +431,11 @@ body::after {
   background: transparent; border: 1.5px solid var(--muted); /* "Nessuna": cerchio vuoto */
 }
 .pick-dot[style*="background"] { border: 0; }
+
+/* Pulsante "Ordina" sopra la lista (apre il pannello di scelta) */
+.sort-btn {
+  display: inline-flex; align-items: center; gap: 4px; flex: none; padding: 8px 4px 8px 6px; border-radius: 999px;
+  font: 600 11px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--ink); white-space: nowrap;
+}
+.sort-btn:active { background: var(--line); }
+.sort-btn svg { width: 16px; height: 16px; color: var(--muted); }

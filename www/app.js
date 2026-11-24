@@ -119,7 +119,7 @@ function render() {
   const items = sortItems(all.filter(matchesFilter));
   $('#list-tools').hidden = all.length === 0;
   $('[data-act="random"]').hidden = tab !== 'todo' || items.length === 0;
-  $('#sort').value = settings.sort || 'added';
+  $('#sort-label').textContent = (SORT_OPTIONS.find((o) => o.key === settings.sort) || SORT_OPTIONS[0]).short;
   visibleIds = items.map((a) => a.id);
   $('#list').innerHTML = items.map((a) => {
     const picked = selected.has(a.id);
@@ -999,29 +999,38 @@ function applyView() {
   });
 }
 
-// App di musica preferita: pannello che sale dal basso (al posto del menu di Android),
-// con le voci dello stesso elenco usato per "Cerca su …"
+/* ---------- Pannello di scelta (al posto dei menu a tendina di Android) ---------- */
+// options: [{ key, label, dot? }]; dot: colore del pallino, 'none' = cerchio vuoto, assente = niente pallino.
+// Ogni voce ha data-act=act e data-key=key: la scelta la gestisce il click handler.
+function openPicker({ kicker, hint, options, current, act }) {
+  const row = (o) => `
+    <button class="pick-option ${o.key === current ? 'on' : ''}" data-act="${act}" data-key="${esc(o.key)}"
+      role="radio" aria-checked="${o.key === current}">
+      ${o.dot ? `<i class="pick-dot" style="${o.dot !== 'none' ? `background:${o.dot}` : ''}"></i>` : ''}
+      <span>${esc(o.label)}</span>
+      ${o.key === current ? ICON.check : ''}
+    </button>`;
+  $('#sheet').innerHTML = `
+    <p class="sheet-kicker">${esc(kicker)}</p>
+    ${hint ? `<p class="pick-hint">${esc(hint)}</p>` : ''}
+    <div class="pick-list" role="radiogroup">${options.map(row).join('')}</div>`;
+  openLayer('sheet');
+}
+
+// App di musica preferita: le voci vengono dallo stesso elenco usato per "Cerca su …"
 function renderMusicAppLabel() {
   $('#music-app-label').textContent = MUSIC_APPS[settings.musicApp]?.name || 'Nessuna';
 }
 
 function openMusicAppPicker() {
-  const current = MUSIC_APPS[settings.musicApp] ? settings.musicApp : '';
-  const option = (key, name, color) => `
-    <button class="pick-option ${key === current ? 'on' : ''}" data-act="set-music-app" data-app="${key}"
-      role="radio" aria-checked="${key === current}">
-      <i class="pick-dot" style="${color ? `background:${color}` : ''}"></i>
-      <span>${esc(name)}</span>
-      ${key === current ? ICON.check : ''}
-    </button>`;
-  $('#sheet').innerHTML = `
-    <p class="sheet-kicker">App di musica</p>
-    <p class="pick-hint">Dove aprire la ricerca di un album con «Cerca su …».</p>
-    <div class="pick-list" role="radiogroup">
-      ${option('', 'Nessuna', '')}
-      ${Object.entries(MUSIC_APPS).map(([k, app]) => option(k, app.name, app.color)).join('')}
-    </div>`;
-  openLayer('sheet');
+  openPicker({
+    kicker: 'App di musica',
+    hint: 'Dove aprire la ricerca di un album con «Cerca su …».',
+    current: MUSIC_APPS[settings.musicApp] ? settings.musicApp : '',
+    act: 'set-music-app',
+    options: [{ key: '', label: 'Nessuna', dot: 'none' },
+      ...Object.entries(MUSIC_APPS).map(([k, app]) => ({ key: k, label: app.name, dot: app.color }))],
+  });
 }
 
 function setMusicApp(key) {
@@ -1030,6 +1039,32 @@ function setMusicApp(key) {
   renderMusicAppLabel();
   closeLayer();
   toast(settings.musicApp ? `Cercherai su ${MUSIC_APPS[settings.musicApp].name}` : 'Nessuna app di musica');
+}
+
+// Ordinamento delle liste: short = etichetta sopra la lista, label = voce nel pannello
+const SORT_OPTIONS = [
+  { key: 'added', short: 'Recenti', label: () => (tab === 'done' ? 'Ascoltati di recente' : 'Aggiunti di recente') },
+  { key: 'artist', short: 'Artista', label: () => 'Artista, dalla A alla Z' },
+  { key: 'title', short: 'Titolo', label: () => 'Titolo, dalla A alla Z' },
+  { key: 'year-asc', short: 'Anno: vecchi', label: () => 'Anno, dal più vecchio' },
+  { key: 'year-desc', short: 'Anno: nuovi', label: () => 'Anno, dal più nuovo' },
+];
+
+function openSortPicker() {
+  openPicker({
+    kicker: tab === 'done' ? 'Ordina gli ascoltati' : 'Ordina gli album da ascoltare',
+    current: SORT_OPTIONS.some((o) => o.key === settings.sort) ? settings.sort : 'added',
+    act: 'set-sort',
+    options: SORT_OPTIONS.map((o) => ({ key: o.key, label: o.label() })),
+  });
+}
+
+function setSort(key) {
+  settings.sort = SORT_OPTIONS.some((o) => o.key === key) ? key : 'added';
+  saveSettings();
+  closeLayer();
+  render();
+  window.scrollTo(0, 0);
 }
 
 $('#view-switch').addEventListener('change', (e) => {
@@ -1301,7 +1336,9 @@ document.addEventListener('click', (e) => {
     case 'paste-link': pasteLink(); break;
     case 'copy-album': copyAlbum(id); break;
     case 'pick-music-app': openMusicAppPicker(); break;
-    case 'set-music-app': setMusicApp(el.dataset.app); break;
+    case 'set-music-app': setMusicApp(el.dataset.key); break;
+    case 'pick-sort': openSortPicker(); break;
+    case 'set-sort': setSort(el.dataset.key); break;
     case 'random-again': closeLayer(); pickRandom(); break;
     case 'choose-cover': chooseCover(+el.dataset.i); break;
     case 'remove-cover': form.cover = ''; renderFormCover(); break;
@@ -1338,9 +1375,6 @@ $('#filter').addEventListener('input', (e) => {
   render();
 });
 $('#filter').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
-$('#sort').addEventListener('change', (e) => {
-  settings.sort = e.target.value; saveSettings(); render(); window.scrollTo(0, 0);
-});
 
 // Ricerca della copertina: stessa logica della ricerca degli album
 let coverTimer;
