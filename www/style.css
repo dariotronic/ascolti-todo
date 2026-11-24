@@ -396,3 +396,15 @@ body::after {
 .paste-btn svg { width: 18px; height: 18px; }
 .paste-btn:disabled { opacity: .5; }
 .paste-row .hint { font-size: 12px; max-width: 34em; }
+
+/* Scheda dell'album: icona copia accanto al titolo */
+.sheet .head-text { flex: 1; min-width: 0; }
+.sheet .head-text h2 { overflow-wrap: anywhere; }
+.sheet .copy-btn { align-self: flex-start; margin: -8px -10px 0 0; color: var(--muted); }
+.sheet .copy-btn svg { width: 20px; height: 20px; }
+
+/* Impostazioni: app di musica preferita */
+.app-field select {
+  font: 500 15px var(--sans); text-transform: none; letter-spacing: 0; max-width: 52vw;
+}
+.app-hint { margin-top: -8px; font-size: 12px; }

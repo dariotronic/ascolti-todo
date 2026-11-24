@@ -20,7 +20,7 @@ const K_ALBUMS = 'albums.v1';
 const K_SETTINGS = 'settings.v1';
 
 let albums = [];
-let settings = { theme: 'dark', view: 'list', cols: 2, sort: 'added', lastBackup: 0, backupSnooze: 0 };
+let settings = { theme: 'dark', view: 'list', cols: 2, sort: 'added', lastBackup: 0, backupSnooze: 0, musicApp: '' };
 let tab = 'todo';
 
 async function load() {
@@ -46,6 +46,8 @@ const ICON = {
   undo: '<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
   trash: '<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3"/></svg>',
   edit: '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>',
+  copy: '<svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></svg>',
+  search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>',
   dice: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/><circle cx="9" cy="9" r="1.1" fill="currentColor"/><circle cx="15" cy="15" r="1.1" fill="currentColor"/><circle cx="15" cy="9" r="1.1" fill="currentColor"/><circle cx="9" cy="15" r="1.1" fill="currentColor"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/></svg>',
 };
 
@@ -320,6 +322,34 @@ function closeLayer() {
   return true;
 }
 
+/* ---------- App di musica preferita e copia ---------- */
+// Indirizzi di ricerca web: Android li apre nell'app, se è installata, altrimenti nel browser
+const MUSIC_APPS = {
+  spotify: { name: 'Spotify', url: (q) => `https://open.spotify.com/search/${encodeURIComponent(q)}` },
+  apple: { name: 'Apple Music', url: (q) => `https://music.apple.com/search?term=${encodeURIComponent(q)}` },
+  youtube: { name: 'YouTube Music', url: (q) => `https://music.youtube.com/search?q=${encodeURIComponent(q)}` },
+  deezer: { name: 'Deezer', url: (q) => `https://www.deezer.com/search/${encodeURIComponent(q)}` },
+  tidal: { name: 'Tidal', url: (q) => `https://listen.tidal.com/search?q=${encodeURIComponent(q)}` },
+  amazon: { name: 'Amazon Music', url: (q) => `https://music.amazon.com/search/${encodeURIComponent(q)}` },
+  bandcamp: { name: 'Bandcamp', url: (q) => `https://bandcamp.com/search?q=${encodeURIComponent(q)}` },
+  soundcloud: { name: 'SoundCloud', url: (q) => `https://soundcloud.com/search?q=${encodeURIComponent(q)}` },
+};
+// Testo da cercare: artista e titolo, come si scrive in qualsiasi barra di ricerca
+const searchText = (a) => [a.artist, a.title].filter(Boolean).join(' ').trim();
+
+async function copyAlbum(id) {
+  const a = albums.find((x) => x.id === id);
+  if (!a) return;
+  const text = searchText(a);
+  try {
+    if (Plugins.Clipboard) await Plugins.Clipboard.write({ string: text });
+    else await navigator.clipboard.writeText(text);
+    toast(`Copiato: ${text}`);
+  } catch {
+    toast('Non riesco a copiare negli appunti');
+  }
+}
+
 /* ---------- Dettaglio album ---------- */
 // random = aperta dal dado "Cosa ascolto adesso?": in più c'è "Pesca un altro"
 function openDetail(id, random = false) {
@@ -328,14 +358,22 @@ function openDetail(id, random = false) {
   const meta = [a.year, TYPE_NAME[a.type], a.listenedAt ? `ascoltato il ${fmtDate(a.listenedAt)}` : `aggiunto il ${fmtDate(a.addedAt)}`].filter(Boolean).join(' · ');
   const again = random && visibleIds.length > 1
     ? `<button data-act="random-again">${ICON.dice}Pesca un altro</button>` : '';
+  // "Cerca su …" solo se nelle impostazioni hai scelto l'app di musica preferita
+  const app = MUSIC_APPS[settings.musicApp];
+  const listen = app
+    ? `<a href="${esc(app.url(searchText(a)))}" target="_blank" rel="noopener">${ICON.search}Cerca su ${esc(app.name)}</a>` : '';
   $('#sheet').innerHTML = `
     ${random ? '<p class="sheet-kicker">Cosa ascolto adesso?</p>' : ''}
     <div class="head" data-title="${esc(a.title)}">
       ${coverHtml(a)}
-      <div><h2>${esc(a.title)}</h2><div class="by">${esc(a.artist)}</div><div class="by">${esc(meta)}</div></div>
+      <div class="head-text">
+        <h2>${esc(a.title)}</h2><div class="by">${esc(a.artist)}</div><div class="by">${esc(meta)}</div>
+      </div>
+      <button class="icon-btn copy-btn" data-act="copy-album" data-id="${esc(a.id)}" aria-label="Copia artista e titolo" title="Copia artista e titolo">${ICON.copy}</button>
     </div>
     <div class="actions">
       <button data-act="sheet-toggle" data-id="${esc(a.id)}">${a.listenedAt ? ICON.undo + 'Rimetti tra da ascoltare' : ICON.check + 'Segna come ascoltato'}</button>
+      ${listen}
       ${again}
       <button data-act="edit" data-id="${esc(a.id)}">${ICON.edit}Modifica</button>
       <button class="danger" data-act="delete" data-id="${esc(a.id)}">${ICON.trash}<span>Elimina</span></button>
@@ -961,6 +999,14 @@ function applyView() {
   });
 }
 
+// App di musica preferita: le voci vengono dallo stesso elenco usato per "Cerca su …"
+$('#music-app').innerHTML = '<option value="">Nessuna</option>'
+  + Object.entries(MUSIC_APPS).map(([k, app]) => `<option value="${k}">${esc(app.name)}</option>`).join('');
+$('#music-app').addEventListener('change', (e) => {
+  settings.musicApp = e.target.value; saveSettings();
+  toast(e.target.value ? `Cercherai su ${MUSIC_APPS[e.target.value].name}` : 'Nessuna app di musica');
+});
+
 $('#view-switch').addEventListener('change', (e) => {
   settings.view = e.target.checked ? 'grid' : 'list';
   saveSettings(); applyView();
@@ -1228,6 +1274,7 @@ document.addEventListener('click', (e) => {
     case 'pick-cover': openCoverPicker(); break;
     case 'random': pickRandom(); break;
     case 'paste-link': pasteLink(); break;
+    case 'copy-album': copyAlbum(id); break;
     case 'random-again': closeLayer(); pickRandom(); break;
     case 'choose-cover': chooseCover(+el.dataset.i); break;
     case 'remove-cover': form.cover = ''; renderFormCover(); break;
@@ -1246,6 +1293,7 @@ document.addEventListener('click', (e) => {
     case 'open-settings':
       $('#backup-status').textContent = '';
       renderBackupInfo();
+      $('#music-app').value = settings.musicApp || '';
       $('#app-version').textContent = appVersion ? `Versione installata: ${appVersion}` : 'Versione non disponibile nel browser.';
       $('#upd-status').textContent = '';
       openLayer('settings');
