@@ -1049,6 +1049,8 @@ function queryFromUrl(url) {
 // Testo condiviso: se contiene un link prova a leggerlo, altrimenti lo usa come ricerca
 // I link condivisi da Spotify hanno "?si=…": da telefono rimandano all'app invece che alla pagina.
 // "nd=1" (no deeplink) è il parametro che Spotify stesso usa per restare sulla pagina web.
+const BROWSER_UA = 'Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36';
+
 function cleanSharedUrl(raw) {
   try {
     const u = new URL(raw);
@@ -1076,9 +1078,12 @@ async function handleShared(text) {
   status.innerHTML = '<span class="spinner"></span>Leggo il link…';
   let parsed = null;
   try {
-    const r = await fetch(url, { headers: { Accept: 'text/html' } });
+    // Come un normale Chrome per Android: i siti musicali rispondono con la pagina completa di metadati
+    // (alla WebView dell'app Spotify risponde con la pagina che apre la sua app)
+    const r = await fetch(url, { headers: { Accept: 'text/html', 'Accept-Language': 'it-IT,it;q=0.9,en;q=0.8', 'User-Agent': BROWSER_UA } });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    parsed = parseAlbumPage(r.url || url, await r.text());
+    // Il sito si riconosce dal link condiviso, non dall'indirizzo finale dopo eventuali reindirizzamenti
+    parsed = parseAlbumPage(url, await r.text());
   } catch {}
   // Album riconosciuto (Spotify, Apple Music, Deezer, Bandcamp): in cima ai risultati, con la ricerca sotto.
   // Altrimenti si cerca il titolo della pagina, o le parole dell'indirizzo.
