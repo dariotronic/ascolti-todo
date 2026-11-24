@@ -112,7 +112,7 @@ function render() {
   const empty = $('#empty');
   empty.hidden = items.length > 0;
   empty.textContent = tab === 'todo'
-    ? (albums.length ? 'Hai ascoltato tutto. Aggiungi qualcosa di nuovo.' : 'Nessun album in lista. Tocca + per aggiungerne uno.')
+    ? (albums.length ? 'Hai ascoltato tutto.\nAggiungi qualcosa di nuovo.' : 'Nessun album in lista.\nTocca + per aggiungerne uno.')
     : 'Gli album che spunti finiranno qui.';
 }
 

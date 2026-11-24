@@ -161,6 +161,7 @@ body::after {
 .empty {
   margin: 18vh var(--pad) 0; text-align: center;
   font: italic 400 19px/1.5 var(--serif); color: var(--muted);
+  white-space: pre-line; /* rispetta gli a capo del testo */
 }
 
 /* Pulsante flottante */
