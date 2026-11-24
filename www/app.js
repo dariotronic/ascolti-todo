@@ -243,8 +243,10 @@ function deleteOne(id) {
   list.addEventListener('pointerdown', (e) => {
     suppress = false;
     if (selecting || list.classList.contains('grid') || e.button > 0) return;
+    // Anche partendo dal cerchio della spunta (verso sinistra viene naturale partire da lì):
+    // un tocco senza trascinare continua a spuntare, un trascinamento è un gesto
     const r = e.target.closest('.row');
-    if (!r || e.target.closest('[data-act="toggle"]')) return;
+    if (!r) return;
     row = r; startX = e.clientX; startY = e.clientY; dx = 0; swiping = false;
   });
   list.addEventListener('pointermove', (e) => {
