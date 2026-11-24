@@ -85,6 +85,18 @@
         <input type="checkbox" id="theme-switch" role="switch" />
         <i class="switch" aria-hidden="true"></i>
       </label>
+      <label class="switch-row">
+        <span>Vista a schede</span>
+        <input type="checkbox" id="view-switch" role="switch" />
+        <i class="switch" aria-hidden="true"></i>
+      </label>
+      <div class="seg-row" id="cols-row" hidden>
+        <span>Schede per riga</span>
+        <div class="seg" role="radiogroup" aria-label="Schede per riga">
+          <button data-act="cols" data-cols="2" role="radio">2</button>
+          <button data-act="cols" data-cols="3" role="radio">3</button>
+        </div>
+      </div>
 
       <h3>Backup</h3>
       <p class="hint">Copia il testo qui sotto per salvare la tua lista, oppure incolla un backup e premi Importa.</p>

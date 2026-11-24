@@ -11,6 +11,7 @@ Per ogni album l'app tiene solo **copertina, titolo, artista e anno**. Dove asco
 - **Scheda dell'album**: tocca un album per vederlo in grande, rimetterlo tra quelli da ascoltare o eliminarlo.
 - **Eliminare più album insieme**: tieni premuto un album, tocca gli altri che vuoi togliere (o *Tutti*) e poi **Elimina**. Funziona in entrambe le liste, e subito dopo puoi ancora toccare *Annulla*.
 - **Tema scuro o chiaro**, dalle Impostazioni (i tre puntini in alto).
+- **Lista o schede**: dalle Impostazioni puoi passare alla *Vista a schede*, con le copertine in griglia, 2 o 3 per riga.
 - **Backup** della lista, da tenere dove vuoi.
 - **Aggiornamenti** direttamente dall'app.
 

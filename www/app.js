@@ -20,7 +20,7 @@ const K_ALBUMS = 'albums.v1';
 const K_SETTINGS = 'settings.v1';
 
 let albums = [];
-let settings = { theme: 'dark' };
+let settings = { theme: 'dark', view: 'list', cols: 2 };
 let tab = 'todo';
 
 async function load() {
@@ -621,6 +621,27 @@ $('#theme-switch').addEventListener('change', (e) => {
   saveSettings(); applyTheme();
 });
 
+/* ---------- Vista: lista o schede ---------- */
+function applyView() {
+  const grid = settings.view === 'grid';
+  const cols = settings.cols === 3 ? 3 : 2;
+  const list = $('#list');
+  list.classList.toggle('grid', grid);
+  list.classList.toggle('cols-3', grid && cols === 3);
+  $('#view-switch').checked = grid;
+  $('#cols-row').hidden = !grid;
+  document.querySelectorAll('[data-act="cols"]').forEach((b) => {
+    const on = +b.dataset.cols === cols;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-checked', on);
+  });
+}
+
+$('#view-switch').addEventListener('change', (e) => {
+  settings.view = e.target.checked ? 'grid' : 'list';
+  saveSettings(); applyView();
+});
+
 /* ---------- Eventi ---------- */
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-act]');
@@ -632,6 +653,7 @@ document.addEventListener('click', (e) => {
     case 'select-exit': exitSelection(); break;
     case 'select-all': pickAll(); break;
     case 'select-delete': deleteSelected(); break;
+    case 'cols': settings.cols = +el.dataset.cols; saveSettings(); applyView(); break;
     case 'toggle': e.stopPropagation(); toggleListened(id, el.closest('.row')); break;
     case 'detail': openDetail(id); break;
     case 'sheet-toggle': closeLayer(); toggleListened(id); break;
@@ -706,6 +728,7 @@ if (Plugins.App) {
 
 load().then(async () => {
   applyTheme();
+  applyView();
   render();
   if (Plugins.App) {
     try { appVersion = (await Plugins.App.getInfo()).version; } catch {}
