@@ -1090,7 +1090,8 @@ async function readLink(url) {
 }
 
 const firstUrl = (text) => {
-  const found = (String(text || '').match(/https?:\/\/[^\s<>"']+/) || [])[0];
+  // /i: alcune tastiere mettono la maiuscola ("Https://…")
+  const found = (String(text || '').match(/https?:\/\/[^\s<>"']+/i) || [])[0];
   return found ? cleanSharedUrl(found) : '';
 };
 
