@@ -2,7 +2,8 @@
 
 Lista personale di album da ascoltare. Capacitor 8 con HTML, CSS e JS senza framework, in `www/`.
 
-- **Ricerca**: Spotify (se configuri le chiavi nelle impostazioni), altrimenti o in mancanza di risultati Deezer, poi MusicBrainz. Si può anche aggiungere un album a mano.
+- **Cosa tiene**: per ogni album copertina, titolo, artista e anno, nelle liste *Da ascoltare* e *Ascoltati*. Dove ascoltarlo lo decidi tu: l'app non apre altri servizi.
+- **Ricerca**, senza chiavi né account: iTunes Search di Apple (dà subito anno e copertina), se non trova nulla Deezer, poi MusicBrainz. Si può anche aggiungere un album a mano.
 - **Dati**: salvati sul telefono (Capacitor Preferences). Esporta/Importa nelle impostazioni per il backup.
 - **Aggiornamenti**: all'avvio (e al ritorno in primo piano, al massimo una volta l'ora) l'app legge l'ultima release di questa repo. Se è più recente mostra un avviso: "Aggiorna" scarica l'APK dentro l'app con barra di avanzamento e apre l'installazione di sistema (plugin nativo `ApkUpdaterPlugin.java`). La prima volta Android chiede di consentire ad Ascolti l'installazione di app. Nelle impostazioni c'è anche "Controlla aggiornamenti".
   Il plugin può installare **solo una versione più nuova di Ascolti stessa**: scarica solo dalle release di `dariotronic/ascolti-todo` (file `.apk`, max 100 MB), confronta l'impronta SHA-256 dichiarata da GitHub e, prima di installare, controlla nome del pacchetto (`it.dariotronic.ascolti`), versione e firma.

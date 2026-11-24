@@ -36,7 +36,6 @@
       </button>
       <input id="q" type="search" placeholder="Album o artista" autocomplete="off" enterkeyhint="search" />
     </header>
-    <div class="sources" id="sources"></div>
     <p class="status" id="status"></p>
     <ul class="list" id="results"></ul>
     <div class="manual-link"><button data-act="open-manual">Non lo trovi? Aggiungilo a mano</button></div>
@@ -72,15 +71,6 @@
         <input type="checkbox" id="theme-switch" role="switch" />
         <i class="switch" aria-hidden="true"></i>
       </label>
-
-      <h3>Spotify</h3>
-      <p class="hint">Facoltativo. Senza chiavi la ricerca usa Deezer e MusicBrainz.
-        Per usare Spotify crea un'app su <b>developer.spotify.com/dashboard</b>
-        e incolla qui Client ID e Client Secret.</p>
-      <label>Client ID<input id="sp-id" autocomplete="off" spellcheck="false" /></label>
-      <label>Client Secret<input id="sp-secret" type="password" autocomplete="off" spellcheck="false" /></label>
-      <button class="primary" data-act="save-spotify">Salva e verifica</button>
-      <p class="status" id="sp-status"></p>
 
       <h3>Backup</h3>
       <p class="hint">Copia il testo qui sotto per salvare la tua lista, oppure incolla un backup e premi Importa.</p>

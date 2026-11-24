@@ -20,12 +20,17 @@ const K_ALBUMS = 'albums.v1';
 const K_SETTINGS = 'settings.v1';
 
 let albums = [];
-let settings = { spotifyId: '', spotifySecret: '', source: 'auto', theme: 'dark' };
+let settings = { theme: 'dark' };
 let tab = 'todo';
 
 async function load() {
   try { albums = JSON.parse((await store.get(K_ALBUMS)) || '[]'); } catch { albums = []; }
   try { Object.assign(settings, JSON.parse((await store.get(K_SETTINGS)) || '{}')); } catch {}
+  // Le versioni precedenti salvavano chiavi Spotify e fonte di ricerca: non servono più, si cancellano
+  if ('spotifyId' in settings || 'spotifySecret' in settings || 'source' in settings) {
+    delete settings.spotifyId; delete settings.spotifySecret; delete settings.source;
+    await saveSettings();
+  }
 }
 const saveAlbums = () => store.set(K_ALBUMS, JSON.stringify(albums));
 const saveSettings = () => store.set(K_SETTINGS, JSON.stringify(settings));
@@ -33,14 +38,11 @@ const saveSettings = () => store.set(K_SETTINGS, JSON.stringify(settings));
 /* ---------- Utilità ---------- */
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const SOURCE_NAME = { spotify: 'Spotify', deezer: 'Deezer', musicbrainz: 'MusicBrainz', manual: 'Manuale' };
 const TYPE_NAME = { single: 'Singolo', ep: 'EP', compilation: 'Raccolta', live: 'Live' };
 
 const ICON = {
   check: '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
-  open: '<svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
-  search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>',
   undo: '<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
   trash: '<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3"/></svg>',
 };
@@ -128,16 +130,10 @@ function closeLayer() {
 }
 
 /* ---------- Dettaglio album ---------- */
-function spotifySearchUrl(a) {
-  return 'https://open.spotify.com/search/' + encodeURIComponent(`${a.title} ${a.artist}`);
-}
 function openDetail(id) {
   const a = albums.find((x) => x.id === id);
   if (!a) return;
-  const links = [];
-  if (a.url) links.push(`<a href="${esc(a.url)}" target="_blank" rel="noopener">${ICON.open}Apri su ${SOURCE_NAME[a.source]}</a>`);
-  if (a.source !== 'spotify') links.push(`<a href="${esc(spotifySearchUrl(a))}" target="_blank" rel="noopener">${ICON.search}Cerca su Spotify</a>`);
-  const meta = [a.year, TYPE_NAME[a.type], a.tracks ? `${a.tracks} brani` : '', a.listenedAt ? `ascoltato il ${fmtDate(a.listenedAt)}` : `aggiunto il ${fmtDate(a.addedAt)}`].filter(Boolean).join(' · ');
+  const meta = [a.year, TYPE_NAME[a.type], a.listenedAt ? `ascoltato il ${fmtDate(a.listenedAt)}` : `aggiunto il ${fmtDate(a.addedAt)}`].filter(Boolean).join(' · ');
   $('#sheet').innerHTML = `
     <div class="head" data-title="${esc(a.title)}">
       ${coverHtml(a)}
@@ -145,7 +141,6 @@ function openDetail(id) {
     </div>
     <div class="actions">
       <button data-act="sheet-toggle" data-id="${esc(a.id)}">${a.listenedAt ? ICON.undo + 'Rimetti tra da ascoltare' : ICON.check + 'Segna come ascoltato'}</button>
-      ${links.join('')}
       <button class="danger" data-act="delete" data-id="${esc(a.id)}">${ICON.trash}<span>Elimina</span></button>
     </div>`;
   openLayer('sheet');
@@ -175,9 +170,8 @@ function toast(text, undo) {
   toastTimer = setTimeout(() => { el.hidden = true; }, 3500);
 }
 
-/* ---------- Motori di ricerca ---------- */
-const UA = 'AlbumTracker/1.0 (personal app)';
-const hasSpotify = () => !!(settings.spotifyId && settings.spotifySecret);
+/* ---------- Motori di ricerca (senza chiavi) ---------- */
+const UA = 'Ascolti/1.0 (app personale)';
 
 async function getJson(url, opts = {}) {
   const r = await fetch(url, opts);
@@ -185,50 +179,34 @@ async function getJson(url, opts = {}) {
   return r.json();
 }
 
-let spToken = null;
-async function spotifyToken() {
-  if (spToken && spToken.exp > Date.now()) return spToken.value;
-  const j = await getJson('https://accounts.spotify.com/api/token', {
-    method: 'POST',
-    headers: {
-      Authorization: 'Basic ' + btoa(`${settings.spotifyId}:${settings.spotifySecret}`),
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: 'grant_type=client_credentials',
-  });
-  spToken = { value: j.access_token, exp: Date.now() + (j.expires_in - 60) * 1000 };
-  return spToken.value;
-}
-
-const ENGINES = {
-  async spotify(q) {
-    const token = await spotifyToken();
-    const j = await getJson(`https://api.spotify.com/v1/search?type=album&limit=10&q=${encodeURIComponent(q)}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return (j.albums?.items || []).filter(Boolean).map((a) => {
-      const imgs = (a.images || []).slice().sort((x, y) => x.width - y.width);
+// In ordine: si passa al successivo solo se il precedente non trova nulla
+const ENGINES = [
+  // iTunes Search di Apple: titolo, artista, anno e copertina in una sola richiesta
+  async function itunes(q) {
+    const j = await getJson(`https://itunes.apple.com/search?entity=album&country=IT&limit=20&term=${encodeURIComponent(q)}`);
+    return (j.results || []).filter((r) => r.collectionId).map((r) => {
+      let title = r.collectionName || '';
+      let type = '';
+      const m = title.match(/\s+-\s+(Single|EP)$/i);
+      if (m) { type = m[1].toLowerCase() === 'ep' ? 'ep' : 'single'; title = title.slice(0, m.index); }
       return {
-        source: 'spotify', sourceId: a.id, title: a.name,
-        artist: (a.artists || []).map((x) => x.name).join(', '),
-        year: (a.release_date || '').slice(0, 4),
-        cover: (imgs.find((i) => i.width >= 250) || imgs[imgs.length - 1] || {}).url || '',
-        url: a.external_urls?.spotify || '', tracks: a.total_tracks,
-        type: a.album_type === 'album' ? '' : a.album_type,
+        source: 'itunes', sourceId: String(r.collectionId), title,
+        artist: r.artistName || '', year: (r.releaseDate || '').slice(0, 4),
+        cover: (r.artworkUrl100 || '').replace('100x100bb', '600x600bb'), type,
       };
     });
   },
-  async deezer(q) {
+  async function deezer(q) {
     const j = await getJson(`https://api.deezer.com/search/album?limit=20&q=${encodeURIComponent(q)}`);
     if (j.error) throw new Error(j.error.message);
     return (j.data || []).map((a) => ({
       source: 'deezer', sourceId: String(a.id), title: a.title,
       artist: a.artist?.name || '', year: '',
-      cover: a.cover_big || a.cover_medium || '', url: a.link || '', tracks: a.nb_tracks,
+      cover: a.cover_big || a.cover_medium || '',
       type: a.record_type === 'album' ? '' : a.record_type,
     }));
   },
-  async musicbrainz(q) {
+  async function musicbrainz(q) {
     const j = await getJson(`https://musicbrainz.org/ws/2/release-group?fmt=json&limit=20&query=${encodeURIComponent(q)}`, {
       headers: { 'User-Agent': UA, Accept: 'application/json' },
     });
@@ -237,11 +215,10 @@ const ENGINES = {
       artist: (g['artist-credit'] || []).map((c) => (c.name || c.artist?.name || '') + (c.joinphrase || '')).join(''),
       year: (g['first-release-date'] || '').slice(0, 4),
       cover: `https://coverartarchive.org/release-group/${g.id}/front-250`,
-      url: `https://musicbrainz.org/release-group/${g.id}`,
       type: ({ Single: 'single', EP: 'ep' })[g['primary-type']] || '',
     }));
   },
-};
+];
 
 // Deezer non restituisce l'anno nella ricerca: lo recupera dopo l'aggiunta
 async function enrichDeezerYear(a) {
@@ -255,12 +232,6 @@ async function enrichDeezerYear(a) {
 let results = [];
 let searchSeq = 0;
 let searchTimer;
-
-function renderSources() {
-  const opts = [['auto', 'Auto'], ['spotify', 'Spotify'], ['deezer', 'Deezer'], ['musicbrainz', 'MusicBrainz']];
-  $('#sources').innerHTML = opts.map(([k, label]) =>
-    `<button data-act="source" data-src="${k}" class="${settings.source === k ? 'active' : ''}" ${k === 'spotify' && !hasSpotify() ? 'disabled' : ''}>${label}</button>`).join('');
-}
 
 const keyOf = (r) => `${r.source}:${r.sourceId}`;
 
@@ -282,32 +253,22 @@ async function runSearch() {
   const seq = ++searchSeq;
   if (q.length < 2) { results = []; renderResults(); status.textContent = ''; return; }
 
-  let chain;
-  if (settings.source === 'auto') chain = [...(hasSpotify() ? ['spotify'] : []), 'deezer', 'musicbrainz'];
-  else chain = [settings.source];
-
   status.innerHTML = '<span class="spinner"></span>Cerco…';
-  let found = [], usedFrom = null, errors = [];
-  for (const eng of chain) {
+  let found = [], failures = 0;
+  for (const engine of ENGINES) {
     try {
-      found = await ENGINES[eng](q);
+      found = await engine(q);
       if (seq !== searchSeq) return;
-      if (found.length) { usedFrom = eng; break; }
-    } catch (e) {
-      errors.push(`${SOURCE_NAME[eng]}: ${e.message}`);
+      if (found.length) break;
+    } catch {
+      failures++;
     }
   }
   if (seq !== searchSeq) return;
   results = found;
   renderResults();
-  if (found.length) {
-    const fellBack = settings.source === 'auto' && hasSpotify() && usedFrom !== 'spotify';
-    status.textContent = `Risultati da ${SOURCE_NAME[usedFrom]}${fellBack ? ' (non trovato su Spotify)' : ''}`;
-  } else {
-    status.textContent = errors.length && errors.length === chain.length
-      ? 'Ricerca non riuscita. Controlla la connessione.'
-      : 'Nessun risultato.';
-  }
+  status.textContent = found.length ? ''
+    : failures === ENGINES.length ? 'Ricerca non riuscita. Controlla la connessione.' : 'Nessun risultato.';
 }
 
 function addResult(i, btn) {
@@ -322,24 +283,12 @@ function addResult(i, btn) {
     const a = { id, ...r, addedAt: Date.now(), listenedAt: null };
     albums.push(a);
     btn.classList.add('on'); btn.innerHTML = `<i>${ICON.check}</i>`;
-    if (a.source === 'deezer') enrichDeezerYear(a);
+    if (a.source === 'deezer' && !a.year) enrichDeezerYear(a);
   }
   saveAlbums();
 }
 
 /* ---------- Impostazioni ---------- */
-async function saveSpotify() {
-  settings.spotifyId = $('#sp-id').value.trim();
-  settings.spotifySecret = $('#sp-secret').value.trim();
-  spToken = null;
-  await saveSettings();
-  const st = $('#sp-status');
-  if (!hasSpotify()) { st.textContent = 'Chiavi rimosse. La ricerca userà Deezer e MusicBrainz.'; return; }
-  st.innerHTML = '<span class="spinner"></span>Verifico…';
-  try { await spotifyToken(); st.textContent = 'Collegato a Spotify.'; }
-  catch (e) { st.textContent = `Chiavi non valide (${e.message}).`; }
-}
-
 function importBackup() {
   try {
     const data = JSON.parse($('#backup').value);
@@ -510,11 +459,8 @@ document.addEventListener('click', (e) => {
     case 'delete': deleteAlbum(id, el); break;
     case 'close': closeLayer(); break;
     case 'open-search':
-      renderSources(); openLayer('search'); renderResults();
+      openLayer('search'); renderResults();
       setTimeout(() => $('#q').focus(), 60);
-      break;
-    case 'source':
-      settings.source = el.dataset.src; saveSettings(); renderSources(); runSearch();
       break;
     case 'add': addResult(+el.dataset.i, el); break;
     case 'open-manual': {
@@ -524,8 +470,6 @@ document.addEventListener('click', (e) => {
       break;
     }
     case 'open-settings':
-      $('#sp-id').value = settings.spotifyId; $('#sp-secret').value = settings.spotifySecret;
-      $('#sp-status').textContent = hasSpotify() ? 'Chiavi salvate.' : '';
       $('#backup').value = '';
       $('#app-version').textContent = appVersion ? `Versione installata: ${appVersion}` : 'Versione non disponibile nel browser.';
       $('#upd-status').textContent = '';
@@ -534,7 +478,6 @@ document.addEventListener('click', (e) => {
     case 'check-update': manualUpdateCheck(); break;
     case 'upd-download': downloadUpdate(); break;
     case 'upd-install': installUpdate(); break;
-    case 'save-spotify': saveSpotify(); break;
     case 'export': $('#backup').value = JSON.stringify(albums); $('#backup').select(); break;
     case 'import': importBackup(); break;
   }
