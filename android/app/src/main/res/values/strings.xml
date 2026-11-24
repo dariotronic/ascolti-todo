@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ascolti</string>
+    <string name="title_activity_main">Ascolti</string>
+    <string name="package_name">it.dariotronic.ascolti</string>
+    <string name="custom_url_scheme">it.dariotronic.ascolti</string>
+</resources>

@@ -1,0 +1,4 @@
+node_modules/
+Ascolti.apk
+*.log
+.DS_Store

@@ -1,0 +1,9 @@
+{
+  "appId": "it.dariotronic.ascolti",
+  "appName": "Ascolti",
+  "webDir": "www",
+  "plugins": {
+    "CapacitorHttp": { "enabled": true },
+    "SystemBars": { "insetsHandling": "css", "initialViewportFitValueHint": "cover" }
+  }
+}

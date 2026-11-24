@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <script>document.documentElement.dataset.theme = localStorage.getItem('theme') || 'dark';</script>
+  <title>Ascolti</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Lista principale -->
+  <main id="home" class="screen">
+    <header class="top">
+      <nav class="tabs" id="tabs">
+        <button data-act="tab" data-tab="todo">Da ascoltare<sup id="count-todo"></sup></button>
+        <button data-act="tab" data-tab="done">Ascoltati<sup id="count-done"></sup></button>
+      </nav>
+      <button class="icon-btn" data-act="open-settings" aria-label="Impostazioni">
+        <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>
+      </button>
+    </header>
+    <div id="update-banner" class="update-banner" hidden></div>
+    <ul class="list" id="list"></ul>
+    <p class="empty" id="empty"></p>
+    <button class="fab" data-act="open-search" aria-label="Aggiungi album">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+  </main>
+
+  <!-- Ricerca -->
+  <section id="search" class="screen overlay" hidden>
+    <header class="search-bar">
+      <button class="icon-btn" data-act="close" aria-label="Indietro">
+        <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <input id="q" type="search" placeholder="Album o artista" autocomplete="off" enterkeyhint="search" />
+    </header>
+    <div class="sources" id="sources"></div>
+    <p class="status" id="status"></p>
+    <ul class="list" id="results"></ul>
+    <div class="manual-link"><button data-act="open-manual">Non lo trovi? Aggiungilo a mano</button></div>
+  </section>
+
+  <!-- Inserimento manuale -->
+  <section id="manual" class="screen overlay" hidden>
+    <header class="plain-bar">
+      <button class="icon-btn" data-act="close" aria-label="Indietro">
+        <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <h2>Aggiungi a mano</h2>
+    </header>
+    <form id="manual-form" class="form">
+      <label>Titolo<input name="title" required autocomplete="off" /></label>
+      <label>Artista<input name="artist" required autocomplete="off" /></label>
+      <label>Anno<input name="year" inputmode="numeric" maxlength="4" autocomplete="off" /></label>
+      <button class="primary" type="submit">Aggiungi</button>
+    </form>
+  </section>
+
+  <!-- Impostazioni -->
+  <section id="settings" class="screen overlay" hidden>
+    <header class="plain-bar">
+      <button class="icon-btn" data-act="close" aria-label="Indietro">
+        <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <h2>Impostazioni</h2>
+    </header>
+    <div class="form">
+      <label class="switch-row">
+        <span>Tema scuro</span>
+        <input type="checkbox" id="theme-switch" role="switch" />
+        <i class="switch" aria-hidden="true"></i>
+      </label>
+
+      <h3>Spotify</h3>
+      <p class="hint">Facoltativo. Senza chiavi la ricerca usa Deezer e MusicBrainz.
+        Per usare Spotify crea un'app su <b>developer.spotify.com/dashboard</b>
+        e incolla qui Client ID e Client Secret.</p>
+      <label>Client ID<input id="sp-id" autocomplete="off" spellcheck="false" /></label>
+      <label>Client Secret<input id="sp-secret" type="password" autocomplete="off" spellcheck="false" /></label>
+      <button class="primary" data-act="save-spotify">Salva e verifica</button>
+      <p class="status" id="sp-status"></p>
+
+      <h3>Backup</h3>
+      <p class="hint">Copia il testo qui sotto per salvare la tua lista, oppure incolla un backup e premi Importa.</p>
+      <textarea id="backup" rows="5" spellcheck="false"></textarea>
+      <div class="row-btns">
+        <button class="ghost" data-act="export">Esporta</button>
+        <button class="ghost" data-act="import">Importa</button>
+      </div>
+
+      <h3>Aggiornamenti</h3>
+      <p class="hint" id="app-version"></p>
+      <button class="primary" data-act="check-update">Controlla aggiornamenti</button>
+      <p class="status" id="upd-status"></p>
+      <div id="upd-panel" class="update-banner in-settings" hidden></div>
+
+      <p class="credit">made with 🪗 by <a href="https://www.instagram.com/dariotronic/" target="_blank" rel="noopener">@dariotronic</a></p>
+    </div>
+  </section>
+
+  <!-- Dettaglio album -->
+  <div id="sheet-backdrop" class="backdrop" data-act="close" hidden></div>
+  <section id="sheet" class="sheet" hidden></section>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
