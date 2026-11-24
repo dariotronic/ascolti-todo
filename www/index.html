@@ -11,24 +11,50 @@
 <body>
   <!-- Lista principale -->
   <main id="home" class="screen">
-    <!-- Selezione multipla (tieni premuto un album) -->
-    <header class="top select-bar" id="select-bar" hidden>
-      <button class="icon-btn" data-act="select-exit" aria-label="Esci dalla selezione">
-        <svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>
-      </button>
-      <span class="select-count" id="select-count"></span>
-      <button class="select-action" data-act="select-all">Tutti</button>
-      <button class="select-action danger" data-act="select-delete">Elimina</button>
-    </header>
-    <header class="top" id="top-bar">
-      <nav class="tabs" id="tabs">
-        <button data-act="tab" data-tab="todo">Da ascoltare<sup id="count-todo"></sup></button>
-        <button data-act="tab" data-tab="done">Ascoltati<sup id="count-done"></sup></button>
-      </nav>
-      <button class="icon-btn" data-act="open-settings" aria-label="Impostazioni">
-        <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>
-      </button>
-    </header>
+    <!-- Intestazione fissa: schede, filtro e ordinamento restano in alto mentre scorri -->
+    <div class="home-head">
+      <!-- Selezione multipla (tieni premuto un album) -->
+      <header class="top select-bar" id="select-bar" hidden>
+        <button class="icon-btn" data-act="select-exit" aria-label="Esci dalla selezione">
+          <svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>
+        </button>
+        <span class="select-count" id="select-count"></span>
+        <button class="select-action" data-act="select-all">Tutti</button>
+        <button class="select-action danger" data-act="select-delete">Elimina</button>
+      </header>
+      <header class="top" id="top-bar">
+        <nav class="tabs" id="tabs">
+          <button data-act="tab" data-tab="todo">Da ascoltare<sup id="count-todo"></sup></button>
+          <button data-act="tab" data-tab="done">Ascoltati<sup id="count-done"></sup></button>
+        </nav>
+        <button class="icon-btn" data-act="open-settings" aria-label="Impostazioni">
+          <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>
+        </button>
+      </header>
+      <!-- Filtro e ordinamento della lista -->
+      <div class="list-tools" id="list-tools" hidden>
+        <div class="filter-field">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
+          <input id="filter" type="search" placeholder="Filtra la lista" autocomplete="off" enterkeyhint="done" />
+          <button class="clear-btn" id="filter-clear" data-act="clear-filter" aria-label="Cancella il filtro" hidden>
+            <svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>
+          </button>
+        </div>
+        <div class="sort-field">
+          <select id="sort" aria-label="Ordina">
+            <option value="added">Recenti</option>
+            <option value="artist">Artista</option>
+            <option value="title">Titolo</option>
+            <option value="year-asc">Anno: vecchi</option>
+            <option value="year-desc">Anno: nuovi</option>
+          </select>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>
+        </div>
+        <button class="icon-btn dice" data-act="random" aria-label="Cosa ascolto adesso?" title="Cosa ascolto adesso?">
+          <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/><circle cx="9" cy="9" r="1.1" fill="currentColor"/><circle cx="15" cy="15" r="1.1" fill="currentColor"/><circle cx="15" cy="9" r="1.1" fill="currentColor"/><circle cx="9" cy="15" r="1.1" fill="currentColor"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
     <div id="update-banner" class="update-banner" hidden></div>
     <div id="backup-banner" class="update-banner" hidden>
       <div class="upd-row">
@@ -37,26 +63,6 @@
           <button data-act="backup-later" class="muted-btn">Più tardi</button>
           <button data-act="backup-open">Backup</button>
         </span>
-      </div>
-    </div>
-    <!-- Filtro e ordinamento della lista -->
-    <div class="list-tools" id="list-tools" hidden>
-      <div class="filter-field">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
-        <input id="filter" type="search" placeholder="Filtra la lista" autocomplete="off" enterkeyhint="done" />
-        <button class="clear-btn" id="filter-clear" data-act="clear-filter" aria-label="Cancella il filtro" hidden>
-          <svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>
-        </button>
-      </div>
-      <div class="sort-field">
-        <select id="sort" aria-label="Ordina">
-          <option value="added">Recenti</option>
-          <option value="artist">Artista</option>
-          <option value="title">Titolo</option>
-          <option value="year-asc">Anno: vecchi</option>
-          <option value="year-desc">Anno: nuovi</option>
-        </select>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>
       </div>
     </div>
     <ul class="list" id="list"></ul>

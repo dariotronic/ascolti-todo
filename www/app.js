@@ -46,6 +46,7 @@ const ICON = {
   undo: '<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
   trash: '<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3"/></svg>',
   edit: '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>',
+  dice: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/><circle cx="9" cy="9" r="1.1" fill="currentColor"/><circle cx="15" cy="15" r="1.1" fill="currentColor"/><circle cx="15" cy="9" r="1.1" fill="currentColor"/><circle cx="9" cy="15" r="1.1" fill="currentColor"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/></svg>',
 };
 
 function coverHtml(a) {
@@ -115,6 +116,7 @@ function render() {
   const all = tab === 'todo' ? todo : done;
   const items = sortItems(all.filter(matchesFilter));
   $('#list-tools').hidden = all.length === 0;
+  $('[data-act="random"]').hidden = tab !== 'todo' || items.length === 0;
   $('#sort').value = settings.sort || 'added';
   visibleIds = items.map((a) => a.id);
   $('#list').innerHTML = items.map((a) => {
@@ -126,6 +128,7 @@ function render() {
         aria-label="${a.listenedAt ? 'Segna da ascoltare' : 'Segna come ascoltato'}"><i>${ICON.check}</i></button>`;
     return `
     <li class="row ${picked ? 'picked' : ''}" data-act="${selecting ? 'select' : 'detail'}" data-id="${esc(a.id)}" data-title="${esc(a.title)}"
+      data-right="${tab === 'done' ? 'Da ascoltare' : 'Ascoltato'}"
       ${selecting ? `role="checkbox" aria-checked="${picked}"` : ''}>
       ${coverHtml(a)}
       <div class="meta">
@@ -217,6 +220,68 @@ function deleteSelected() {
   list.addEventListener('contextmenu', (e) => e.preventDefault());
 })();
 
+function deleteOne(id) {
+  const idx = albums.findIndex((x) => x.id === id);
+  if (idx < 0) return;
+  const [removed] = albums.splice(idx, 1);
+  saveAlbums(); render();
+  toast('Album eliminato', () => { albums.splice(idx, 0, removed); saveAlbums(); render(); });
+}
+
+// Gesti nella vista a lista: verso destra segna come ascoltato (in "Ascoltati": lo rimette da ascoltare),
+// verso sinistra elimina. Sempre con Annulla. Se il dito va prima in verticale, è il normale scorrimento.
+(() => {
+  const list = $('#list');
+  let row = null, startX = 0, startY = 0, dx = 0, swiping = false, suppress = false;
+  const reset = () => { row = null; swiping = false; dx = 0; };
+  const snapBack = (r) => {
+    r.classList.remove('swiping', 'swipe-armed');
+    r.style.transition = 'transform .2s ease-out';
+    r.style.transform = '';
+    setTimeout(() => { r.style.transition = ''; delete r.dataset.swipe; }, 220);
+  };
+  list.addEventListener('pointerdown', (e) => {
+    suppress = false;
+    if (selecting || list.classList.contains('grid') || e.button > 0) return;
+    const r = e.target.closest('.row');
+    if (!r || e.target.closest('[data-act="toggle"]')) return;
+    row = r; startX = e.clientX; startY = e.clientY; dx = 0; swiping = false;
+  });
+  list.addEventListener('pointermove', (e) => {
+    if (!row) return;
+    const mx = e.clientX - startX, my = e.clientY - startY;
+    if (!swiping) {
+      if (Math.abs(my) > 12 && Math.abs(my) > Math.abs(mx)) { reset(); return; }
+      if (Math.abs(mx) < 12) return;
+      swiping = true;
+      row.classList.add('swiping');
+      try { row.setPointerCapture(e.pointerId); } catch {}
+    }
+    dx = mx;
+    row.style.transform = `translateX(${dx}px)`;
+    row.dataset.swipe = dx > 0 ? 'right' : 'left';
+    row.classList.toggle('swipe-armed', Math.abs(dx) > row.offsetWidth * 0.3);
+  });
+  list.addEventListener('pointerup', () => {
+    if (!row) return;
+    const r = row, d = dx, was = swiping;
+    reset();
+    if (!was) return;
+    suppress = true; // il clic che segue non deve aprire la scheda
+    if (Math.abs(d) > r.offsetWidth * 0.3) {
+      r.classList.remove('swiping');
+      r.style.transition = 'transform .18s ease-out';
+      r.style.transform = `translateX(${d > 0 ? 110 : -110}%)`;
+      const id = r.dataset.id;
+      setTimeout(() => (d > 0 ? toggleListened(id) : deleteOne(id)), 170);
+    } else snapBack(r);
+  });
+  list.addEventListener('pointercancel', () => { if (row && swiping) snapBack(row); reset(); });
+  list.addEventListener('click', (e) => {
+    if (suppress) { suppress = false; e.stopPropagation(); e.preventDefault(); }
+  }, true);
+})();
+
 function toggleListened(id, rowEl) {
   const a = albums.find((x) => x.id === id);
   if (!a) return;
@@ -254,21 +319,36 @@ function closeLayer() {
 }
 
 /* ---------- Dettaglio album ---------- */
-function openDetail(id) {
+// random = aperta dal dado "Cosa ascolto adesso?": in più c'è "Pesca un altro"
+function openDetail(id, random = false) {
   const a = albums.find((x) => x.id === id);
   if (!a) return;
   const meta = [a.year, TYPE_NAME[a.type], a.listenedAt ? `ascoltato il ${fmtDate(a.listenedAt)}` : `aggiunto il ${fmtDate(a.addedAt)}`].filter(Boolean).join(' · ');
+  const again = random && visibleIds.length > 1
+    ? `<button data-act="random-again">${ICON.dice}Pesca un altro</button>` : '';
   $('#sheet').innerHTML = `
+    ${random ? '<p class="sheet-kicker">Cosa ascolto adesso?</p>' : ''}
     <div class="head" data-title="${esc(a.title)}">
       ${coverHtml(a)}
       <div><h2>${esc(a.title)}</h2><div class="by">${esc(a.artist)}</div><div class="by">${esc(meta)}</div></div>
     </div>
     <div class="actions">
       <button data-act="sheet-toggle" data-id="${esc(a.id)}">${a.listenedAt ? ICON.undo + 'Rimetti tra da ascoltare' : ICON.check + 'Segna come ascoltato'}</button>
+      ${again}
       <button data-act="edit" data-id="${esc(a.id)}">${ICON.edit}Modifica</button>
       <button class="danger" data-act="delete" data-id="${esc(a.id)}">${ICON.trash}<span>Elimina</span></button>
     </div>`;
   openLayer('sheet');
+}
+
+/* ---------- Cosa ascolto adesso? ---------- */
+let lastRandom = null;
+// Pesca tra gli album "Da ascoltare" visibili (se c'è un filtro, solo tra quelli), mai lo stesso di prima
+function pickRandom() {
+  const pool = visibleIds.length > 1 ? visibleIds.filter((id) => id !== lastRandom) : visibleIds;
+  if (!pool.length) return;
+  lastRandom = pool[Math.floor(Math.random() * pool.length)];
+  openDetail(lastRandom, true);
 }
 
 function deleteAlbum(id, btn) {
@@ -451,7 +531,7 @@ function renderResults() {
     return `
     <li class="row" data-title="${esc(r.title)}">
       ${coverHtml(r)}
-      <div class="meta"><div class="title">${esc(r.title)}</div><div class="sub">${esc(subLine(r))}</div></div>
+      <div class="meta"><div class="title">${esc(r.title)}</div><div class="sub">${esc(subLine(r) + (r.source === 'link' ? ' · dal link' : ''))}</div></div>
       <button class="add ${added ? 'on' : ''}" data-act="add" data-i="${i}" aria-label="${added ? 'Già in lista' : 'Aggiungi'}"><i>${added ? ICON.check : ICON.plus}</i></button>
     </li>`;
   }).join('');
@@ -470,6 +550,10 @@ async function runSearch() {
   const update = () => {
     if (seq !== searchSeq) return;
     results = rankResults(lists, q);
+    if (linkResult) {
+      const same = (r) => tokens(r.title).join(" ") === tokens(linkResult.title).join(" ") && tokens(r.artist).join(" ") === tokens(linkResult.artist).join(" ");
+      results = [linkResult, ...results.filter((r) => !same(r))];
+    }
     renderResults();
     if (pending) status.innerHTML = '<span class="spinner"></span>Cerco…';
     else status.textContent = results.length ? ''
@@ -880,6 +964,145 @@ $('#view-switch').addEventListener('change', (e) => {
   saveSettings(); applyView();
 });
 
+/* ---------- "Condividi → Ascolti" da altre app ---------- */
+// Album letto dal link condiviso: compare in cima ai risultati della ricerca
+let linkResult = null;
+
+const decodeHtml = (s) => {
+  const t = document.createElement('textarea');
+  t.innerHTML = String(s || '');
+  return t.value;
+};
+
+function metaFrom(html) {
+  const get = (name) => {
+    const re1 = new RegExp(`<meta[^>]+(?:property|name)=["']${name}["'][^>]*content=["']([^"']*)["']`, 'i');
+    const re2 = new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]*(?:property|name)=["']${name}["']`, 'i');
+    const m = html.match(re1) || html.match(re2);
+    return m ? decodeHtml(m[1]).trim() : '';
+  };
+  const title = decodeHtml((html.match(/<title[^>]*>([^<]*)/i) || [])[1] || '').trim();
+  return { get, title };
+}
+
+const yearIn = (s) => (String(s || '').match(/\b(19|20)\d{2}\b/) || [])[0] || '';
+
+// Da una pagina di Spotify, Apple Music, Deezer, Bandcamp (o un sito qualsiasi) ricava titolo, artista, anno e copertina
+function parseAlbumPage(url, html) {
+  const host = new URL(url).hostname.replace(/^www\./, '');
+  const { get, title: pageTitle } = metaFrom(html);
+  const ogTitle = get('og:title');
+  const desc = get('og:description');
+  const cover = get('og:image');
+  const release = yearIn(get('music:release_date'));
+  let title = '', artist = '', year = release;
+
+  if (host.endsWith('spotify.com')) {
+    // Album: "Kid A - Album by Radiohead | Spotify" + "Radiohead · album · 2000 · 11 songs"
+    // Brano: "Lost in the Fire" + "Gesaffelstein, The Weeknd · Hyperion · Song · 2019" → si prende l'album
+    const parts = desc.split(' · ');
+    if (/\/track\//.test(url) && parts.length >= 3) {
+      artist = parts[0]; title = parts[1];
+    } else {
+      artist = parts[0] || '';
+      title = ogTitle.replace(/^(Listen to|Ascolta|Escucha|Écouter|Hör dir)\s+/i, '')
+        .replace(/\s+-\s+(Album|EP|Single|Singolo|Compilation).*$/i, '').replace(/\s*\|\s*Spotify$/i, '');
+    }
+    year = year || yearIn(desc);
+  } else if (host.endsWith('music.apple.com')) {
+    // "Kid A di Radiohead su Apple Music" (cambia con la lingua: by/on, von/auf…)
+    const m = ogTitle.match(/^(.*)\s+(?:di|by|von|de|par)\s+(.*?)\s+(?:su|on|auf|en|sur)\s+Apple Music$/i);
+    if (m) { title = m[1]; artist = m[2]; } else title = ogTitle;
+    year = year || yearIn(desc);
+  } else if (host.endsWith('deezer.com')) {
+    // "Kid A" + "Radiohead - album - 2000 - 11 canzoni"
+    title = ogTitle;
+    artist = desc.split(' - ')[0] || '';
+    year = year || yearIn(desc);
+  } else if (host.endsWith('bandcamp.com')) {
+    // "Mother Earth's Plantasia, by Mort Garson"
+    const m = ogTitle.match(/^(.*),\s+by\s+(.*)$/);
+    if (m) { title = m[1]; artist = m[2]; } else title = ogTitle;
+    year = year || yearIn((html.match(/"datePublished"\s*:\s*"([^"]+)"/) || [])[1]
+      || (html.match(/released\s+[A-Za-z]+\s+\d{1,2},\s+(\d{4})/) || [])[1]);
+  } else {
+    // Sito qualsiasi: il titolo della pagina (senza il nome del sito) serve solo come testo da cercare
+    const query = (ogTitle || pageTitle).replace(/\s*[|–—-]\s*[^|–—-]+$/, '').trim();
+    return query && !/challenge|just a moment|access denied/i.test(query) ? { query } : null;
+  }
+  title = title.trim(); artist = artist.trim();
+  if (!title) return null;
+  return { album: { source: 'link', sourceId: url, title, artist, year, cover, type: '' } };
+}
+
+// Se la pagina non si legge (per esempio un controllo anti-bot), qualcosa si ricava dall'indirizzo:
+// ".../album/mother-earths-plantasia" → "mother earths plantasia"
+function queryFromUrl(url) {
+  try {
+    const parts = new URL(url).pathname.split('/').filter(Boolean);
+    const i = parts.findIndex((p) => /^(album|release|record)s?$/i.test(p));
+    const slug = i >= 0 ? parts[i + 1] : '';
+    return slug && !/^\d+$/.test(slug) ? decodeURIComponent(slug).replace(/[-_+]+/g, ' ').trim() : '';
+  } catch { return ''; }
+}
+
+// Testo condiviso: se contiene un link prova a leggerlo, altrimenti lo usa come ricerca
+// I link condivisi da Spotify hanno "?si=…": da telefono rimandano all'app invece che alla pagina.
+// "nd=1" (no deeplink) è il parametro che Spotify stesso usa per restare sulla pagina web.
+function cleanSharedUrl(raw) {
+  try {
+    const u = new URL(raw);
+    if (u.hostname.endsWith('spotify.com')) return `${u.origin}${u.pathname}?nd=1`;
+    return u.href;
+  } catch { return raw; }
+}
+
+async function handleShared(text) {
+  if (!text) return;
+  const found = (String(text).match(/https?:\/\/[^\s<>"']+/) || [])[0];
+  const url = found ? cleanSharedUrl(found) : '';
+  while (stack.length) closeLayer();
+  exitSelection();
+  openLayer('search');
+  linkResult = null;
+  results = []; renderResults();
+  const status = $('#status');
+  if (!url) {
+    $('#q').value = String(text).trim().slice(0, 120); syncClear();
+    runSearch();
+    return;
+  }
+  $('#q').value = ''; syncClear();
+  status.innerHTML = '<span class="spinner"></span>Leggo il link…';
+  let parsed = null;
+  try {
+    const r = await fetch(url, { headers: { Accept: 'text/html' } });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    parsed = parseAlbumPage(r.url || url, await r.text());
+  } catch {}
+  // Album riconosciuto (Spotify, Apple Music, Deezer, Bandcamp): in cima ai risultati, con la ricerca sotto.
+  // Altrimenti si cerca il titolo della pagina, o le parole dell'indirizzo.
+  linkResult = parsed?.album || null;
+  const query = linkResult ? `${linkResult.title} ${linkResult.artist}` : parsed?.query || queryFromUrl(url);
+  if (query) {
+    $('#q').value = query.trim(); syncClear();
+    runSearch();
+  } else {
+    status.textContent = 'Non riesco a riconoscere l’album da questo link: scrivi qui sopra titolo o artista.';
+    setTimeout(() => $('#q').focus(), 60);
+  }
+}
+
+const ShareReceiver = Plugins.ShareReceiver || null;
+async function consumeShared() {
+  if (!ShareReceiver) return;
+  try {
+    const { text } = await ShareReceiver.consume();
+    if (text) handleShared(text);
+  } catch {}
+}
+if (ShareReceiver) ShareReceiver.addListener('shared', ({ text }) => handleShared(text));
+
 /* ---------- Eventi ---------- */
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-act]');
@@ -904,7 +1127,7 @@ document.addEventListener('click', (e) => {
     case 'add': addResult(+el.dataset.i, el); break;
     case 'clear-search': // "x": svuota testo e risultati, la tastiera resta aperta per una nuova ricerca
       clearTimeout(searchTimer); searchSeq++;
-      $('#q').value = ''; syncClear();
+      $('#q').value = ''; syncClear(); linkResult = null;
       results = []; renderResults(); $('#status').textContent = '';
       $('#q').focus();
       break;
@@ -916,6 +1139,8 @@ document.addEventListener('click', (e) => {
       break;
     }
     case 'pick-cover': openCoverPicker(); break;
+    case 'random': pickRandom(); break;
+    case 'random-again': closeLayer(); pickRandom(); break;
     case 'choose-cover': chooseCover(+el.dataset.i); break;
     case 'remove-cover': form.cover = ''; renderFormCover(); break;
     case 'clear-filter':
@@ -966,6 +1191,7 @@ $('#manual-form').elements.title.addEventListener('input', () => { if (!form.cov
 const syncClear = () => { $('#q-clear').hidden = !$('#q').value; };
 $('#q').addEventListener('input', () => {
   syncClear();
+  linkResult = null;
   clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 450);
 });
 $('#q').addEventListener('keydown', (e) => {
@@ -982,6 +1208,7 @@ if (Plugins.App) {
   // Anche quando l'app torna in primo piano (sempre con il limite orario)
   Plugins.App.addListener('resume', () => {
     resumePendingInstall().catch(() => {});
+    consumeShared();
     if (upd.phase !== 'downloading') checkUpdate().catch(() => {});
   });
 }
@@ -991,6 +1218,7 @@ load().then(async () => {
   applyView();
   render();
   renderBackupBanner();
+  consumeShared();
   if (Plugins.App) {
     try { appVersion = (await Plugins.App.getInfo()).version; } catch {}
     checkUpdate().catch(() => {});

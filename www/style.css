@@ -355,3 +355,37 @@ body::after {
   animation: spin .7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Intestazioni fisse: restano in alto mentre la lista scorre (sotto la fascia della barra di stato) */
+.home-head { position: sticky; top: var(--st); z-index: 6; background: var(--bg); }
+/* Nelle schermate sopra la lista il margine in alto (barra di stato compresa) sta nella barra stessa:
+   così, fissata a 0, copre anche la zona della barra di stato mentre il contenuto scorre sotto */
+.overlay { padding-top: 0; }
+.overlay > .search-bar, .overlay > .plain-bar {
+  position: sticky; top: 0; z-index: 3; background: var(--bg);
+  padding-top: calc(var(--st) + 20px);
+}
+
+/* Cosa ascolto adesso? */
+.list-tools .dice { width: 38px; height: 38px; margin-right: -8px; color: var(--ink); }
+.list-tools .dice svg { width: 21px; height: 21px; }
+.sheet-kicker {
+  margin: -6px 0 14px; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+}
+
+/* Gesti sulla lista: la riga segue il dito e sotto compare l'azione */
+#list { overflow-x: clip; }
+#list:not(.grid) .row { position: relative; touch-action: pan-y; }
+#list .row.swiping { transition: none; }
+#list .row[data-swipe]::before, #list .row[data-swipe]::after {
+  position: absolute; top: 0; bottom: 0; width: 100vw; display: flex; align-items: center;
+  font: 700 11.5px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: #fff;
+  opacity: .55; transition: opacity .15s;
+}
+#list .row.swipe-armed::before, #list .row.swipe-armed::after { opacity: 1; }
+#list .row[data-swipe="right"]::before {
+  content: attr(data-right); right: 100%; justify-content: flex-end; padding-right: 24px; background: #4f7d5c;
+}
+#list .row[data-swipe="left"]::after {
+  content: "Elimina"; left: 100%; padding-left: 24px; background: #b4462f;
+}
