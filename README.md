@@ -8,7 +8,8 @@ Per ogni album l'app tiene solo **copertina, titolo, artista e anno**. Dove asco
 
 - **Due liste**: *Da ascoltare* e *Ascoltati*. Tocca il cerchio accanto a un album per spuntarlo, e se sbagli tocca *Annulla*.
 - **Ricerca**: tocca **+** e scrivi album o artista. I risultati arrivano dal catalogo di Apple (iTunes); se lì non c'è nulla, da Deezer e poi da MusicBrainz, che ha anche le uscite più rare. Se non lo trovi, puoi **aggiungerlo a mano**.
-- **Scheda dell'album**: tocca un album per vederlo in grande, rimetterlo tra quelli da ascoltare o eliminarlo.
+- **Scheda dell'album**: tocca un album per vederlo in grande, rimetterlo tra quelli da ascoltare, **modificarlo** (titolo, artista, anno e copertina, scegliendola tra quelle trovate) o eliminarlo.
+- **Filtro e ordinamento**: sopra la lista puoi filtrare mentre scrivi (titolo, artista o anno) e ordinare per data, artista, titolo o anno.
 - **Eliminare più album insieme**: tieni premuto un album, tocca gli altri che vuoi togliere (o *Tutti*) e poi **Elimina**. Funziona in entrambe le liste, e subito dopo puoi ancora toccare *Annulla*.
 - **Tema scuro o chiaro**, dalle Impostazioni (i tre puntini in alto).
 - **Lista o schede**: dalle Impostazioni puoi passare alla *Vista a schede*, con le copertine in griglia, 2 o 3 per riga.
@@ -44,10 +45,13 @@ Quando apri l'app, Ascolti controlla se c'è una versione nuova, al massimo una 
 
 ### Backup e cambio di telefono
 
-I dati stanno **solo sul telefono**: se disinstalli l'app o ne cancelli i dati, la lista si perde. Per salvarla:
+I dati stanno **solo sul telefono**: se disinstalli l'app o ne cancelli i dati, la lista si perde. Per salvarla, da *Impostazioni → Backup*:
 
-1. *Impostazioni → Backup → **Esporta***: nel riquadro compare la tua lista come testo. Copiala e salvala dove vuoi, per esempio in una nota o mandandola a te stesso su Telegram.
-2. Per ripristinarla, anche su un altro telefono: incolla quel testo nello stesso riquadro e tocca **Importa**. Gli album già presenti non vengono duplicati.
+- **Salva in Documenti**: crea il file `ascolti-backup-AAAA-MM-GG.json` nella cartella *Documenti/Ascolti* del telefono.
+- **Condividi…**: manda lo stesso file dove vuoi (Drive, mail, Telegram…).
+- **Ripristina da un file**: scegli un file di backup, anche su un altro telefono. Gli album già presenti non vengono duplicati.
+
+Se non fai un backup da più di un mese, l'app te lo ricorda in cima alla lista.
 
 ### Privacy
 

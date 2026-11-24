@@ -20,7 +20,7 @@ const K_ALBUMS = 'albums.v1';
 const K_SETTINGS = 'settings.v1';
 
 let albums = [];
-let settings = { theme: 'dark', view: 'list', cols: 2 };
+let settings = { theme: 'dark', view: 'list', cols: 2, sort: 'added', lastBackup: 0, backupSnooze: 0 };
 let tab = 'todo';
 
 async function load() {
@@ -45,6 +45,7 @@ const ICON = {
   plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
   undo: '<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
   trash: '<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3"/></svg>',
+  edit: '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>',
 };
 
 function coverHtml(a) {
@@ -61,6 +62,9 @@ document.addEventListener('error', (e) => {
     delete img.dataset.alt;
     return;
   }
+  // Nella scelta della copertina un'immagine che non si carica non è una scelta valida: via la casella
+  const tile = img.tagName === 'IMG' && img.closest('.cover-tile');
+  if (tile) { tile.remove(); return; }
   if (img.tagName === 'IMG' && img.parentElement?.classList.contains('cover')) {
     const box = img.parentElement;
     img.remove();
@@ -73,15 +77,45 @@ function subLine(a) {
 }
 const fmtDate = (ts) => new Date(ts).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
 
+/* ---------- Filtro e ordinamento ---------- */
+let filterText = '';
+const collator = new Intl.Collator('it', { sensitivity: 'base', numeric: true });
+// Per ordinare per artista si ignora l'articolo iniziale: "The Beatles" sta sotto la B
+const artistKey = (a) => String(a.artist || '').replace(/^(the|il|lo|la|i|gli|le)\s+/i, '');
+const yearOf = (a, missing) => (/^\d{4}$/.test(a.year) ? +a.year : missing);
+
+function sortItems(items) {
+  const byArtist = (a, b) => collator.compare(artistKey(a), artistKey(b)) || collator.compare(a.title, b.title);
+  const sorts = {
+    added: (a, b) => (tab === 'done' ? b.listenedAt - a.listenedAt : b.addedAt - a.addedAt),
+    artist: byArtist,
+    title: (a, b) => collator.compare(a.title, b.title) || byArtist(a, b),
+    'year-asc': (a, b) => yearOf(a, 9999) - yearOf(b, 9999) || byArtist(a, b),   // senza anno: in fondo
+    'year-desc': (a, b) => yearOf(b, -1) - yearOf(a, -1) || byArtist(a, b),
+  };
+  return items.sort(sorts[settings.sort] || sorts.added);
+}
+
+// Ogni parola scritta nel filtro deve comparire (anche solo l'inizio) in titolo, artista o anno
+function matchesFilter(a) {
+  const words = tokens(filterText);
+  if (!words.length) return true;
+  const hay = tokens(`${a.title} ${a.artist} ${a.year || ''}`);
+  return words.every((w) => hay.some((t) => t.startsWith(w)));
+}
+
 /* ---------- Lista principale ---------- */
 function render() {
-  const todo = albums.filter((a) => !a.listenedAt).sort((a, b) => b.addedAt - a.addedAt);
-  const done = albums.filter((a) => a.listenedAt).sort((a, b) => b.listenedAt - a.listenedAt);
+  const todo = albums.filter((a) => !a.listenedAt);
+  const done = albums.filter((a) => a.listenedAt);
   $('#count-todo').textContent = todo.length || '';
   $('#count-done').textContent = done.length || '';
   document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
 
-  const items = tab === 'todo' ? todo : done;
+  const all = tab === 'todo' ? todo : done;
+  const items = sortItems(all.filter(matchesFilter));
+  $('#list-tools').hidden = all.length === 0;
+  $('#sort').value = settings.sort || 'added';
   visibleIds = items.map((a) => a.id);
   $('#list').innerHTML = items.map((a) => {
     const picked = selected.has(a.id);
@@ -111,7 +145,9 @@ function render() {
 
   const empty = $('#empty');
   empty.hidden = items.length > 0;
-  empty.textContent = tab === 'todo'
+  empty.textContent = all.length && filterText.trim()
+    ? `Nessun album corrisponde a\n“${filterText.trim()}”.`
+    : tab === 'todo'
     ? (albums.length ? 'Hai ascoltato tutto.\nAggiungi qualcosa di nuovo.' : 'Nessun album in lista.\nTocca + per aggiungerne uno.')
     : 'Gli album che spunti finiranno qui.';
 }
@@ -229,6 +265,7 @@ function openDetail(id) {
     </div>
     <div class="actions">
       <button data-act="sheet-toggle" data-id="${esc(a.id)}">${a.listenedAt ? ICON.undo + 'Rimetti tra da ascoltare' : ICON.check + 'Segna come ascoltato'}</button>
+      <button data-act="edit" data-id="${esc(a.id)}">${ICON.edit}Modifica</button>
       <button class="danger" data-act="delete" data-id="${esc(a.id)}">${ICON.trash}<span>Elimina</span></button>
     </div>`;
   openLayer('sheet');
@@ -463,18 +500,219 @@ function addResult(i, btn) {
   saveAlbums();
 }
 
-/* ---------- Impostazioni ---------- */
-function importBackup() {
-  try {
-    const data = JSON.parse($('#backup').value);
-    if (!Array.isArray(data)) throw new Error();
-    const ids = new Set(albums.map((a) => a.id));
-    const fresh = data.filter((a) => a && a.id && a.title && !ids.has(a.id));
-    albums.push(...fresh);
-    saveAlbums(); render();
-    toast(`Importati ${fresh.length} album`);
-  } catch { toast('Backup non valido'); }
+/* ---------- Aggiunta a mano e modifica ---------- */
+// mode: 'add' (nuovo album) o 'edit' (album esistente, id); cover: copertina scelta nel modulo
+const form = { mode: 'add', id: null, cover: '' };
+
+function renderFormCover() {
+  const f = $('#manual-form').elements;
+  $('#form-cover').innerHTML = coverHtml({ title: f.title.value || '?', cover: form.cover });
+  $('#form-cover').dataset.title = f.title.value || '?';
+  $('#remove-cover').hidden = !form.cover;
 }
+
+function openForm(mode, album) {
+  const f = $('#manual-form');
+  f.reset();
+  form.mode = mode;
+  form.id = album?.id || null;
+  form.cover = album?.cover || '';
+  if (album) {
+    f.elements.title.value = album.title || '';
+    f.elements.artist.value = album.artist || '';
+    f.elements.year.value = album.year || '';
+  } else {
+    f.elements.title.value = $('#q').value.trim(); // da "Non lo trovi?": parte da ciò che hai cercato
+  }
+  $('#form-title').textContent = mode === 'edit' ? 'Modifica album' : 'Aggiungi a mano';
+  $('#form-submit').textContent = mode === 'edit' ? 'Salva' : 'Aggiungi';
+  renderFormCover();
+  openLayer('manual');
+  if (mode === 'add') setTimeout(() => f.elements.title.focus(), 60);
+}
+
+function submitForm(e) {
+  e.preventDefault();
+  const f = e.target.elements;
+  const data = {
+    title: f.title.value.trim(),
+    artist: f.artist.value.trim(),
+    year: f.year.value.trim(),
+    cover: form.cover,
+  };
+  if (form.mode === 'edit') {
+    const a = albums.find((x) => x.id === form.id);
+    if (a) { Object.assign(a, data); delete a.coverAlt; }
+    saveAlbums();
+    closeLayer(); render();
+    toast('Album aggiornato');
+    return;
+  }
+  const now = Date.now();
+  albums.push({ id: `manual:${now}`, source: 'manual', sourceId: String(now), ...data, addedAt: now, listenedAt: null });
+  saveAlbums();
+  while (stack.length) closeLayer();
+  tab = 'todo'; render();
+  toast('Album aggiunto');
+}
+
+/* ---------- Scelta della copertina ---------- */
+let coverSeq = 0;
+let coverChoices = [];
+
+function openCoverPicker() {
+  const f = $('#manual-form').elements;
+  $('#cq').value = `${f.title.value} ${f.artist.value}`.trim();
+  openLayer('covers');
+  searchCovers();
+}
+
+// Cerca su tutte le fonti e mostra solo le copertine, una per immagine
+async function searchCovers() {
+  const q = $('#cq').value.trim();
+  const status = $('#covers-status');
+  const grid = $('#cover-grid');
+  const seq = ++coverSeq;
+  if (q.length < 2) {
+    grid.innerHTML = '';
+    status.textContent = 'Scrivi titolo e artista per cercare la copertina.';
+    return;
+  }
+  status.innerHTML = '<span class="spinner"></span>Cerco le copertine…';
+  grid.innerHTML = '';
+  const lists = ENGINES.map(() => []);
+  let pending = ENGINES.length;
+  const update = () => {
+    if (seq !== coverSeq) return;
+    const seen = new Set();
+    coverChoices = rankResults(lists, q)
+      .map((r) => ({ ...r, cover: r.cover || r.coverAlt }))
+      .filter((r) => r.cover && !seen.has(r.cover) && seen.add(r.cover));
+    grid.innerHTML = coverChoices.map((r, i) => `
+      <button class="cover-tile" data-act="choose-cover" data-i="${i}" data-title="${esc(r.title)}">
+        <div class="cover"><img loading="lazy" src="${esc(r.cover)}" alt=""></div>
+        <span class="tile-title">${esc(r.title)}</span>
+        <span class="tile-sub">${esc([r.artist, r.year].filter(Boolean).join(' · '))}</span>
+      </button>`).join('');
+    status.innerHTML = pending
+      ? '<span class="spinner"></span>Cerco le copertine…'
+      : coverChoices.length ? 'Tocca la copertina che vuoi usare.' : 'Nessuna copertina trovata: prova a cambiare la ricerca.';
+  };
+  await Promise.all(ENGINES.map(async (engine, i) => {
+    try { lists[i] = await engine(q); } catch {}
+    pending--;
+    update();
+  }));
+}
+
+function chooseCover(i) {
+  const r = coverChoices[i];
+  if (!r) return;
+  form.cover = r.cover;
+  // Completa i campi rimasti vuoti con i dati dell'album scelto
+  const f = $('#manual-form').elements;
+  if (!f.title.value.trim()) f.title.value = r.title || '';
+  if (!f.artist.value.trim()) f.artist.value = r.artist || '';
+  if (!f.year.value.trim() && /^\d{4}$/.test(r.year || '')) f.year.value = r.year;
+  closeLayer();
+  renderFormCover();
+}
+
+/* ---------- Backup su file ---------- */
+const MONTH = 30 * 24 * 60 * 60 * 1000;
+
+function backupFileName() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `ascolti-backup-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.json`;
+}
+
+// how: 'documents' (cartella Documenti/Ascolti) o 'share' (menu Condividi). Nel browser scarica il file.
+async function saveBackup(how) {
+  const status = $('#backup-status');
+  const text = JSON.stringify({ app: 'ascolti', format: 1, exportedAt: new Date().toISOString(), albums }, null, 1);
+  const name = backupFileName();
+  const { Filesystem, Share } = Plugins;
+  try {
+    if (!Filesystem) {
+      const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+      const link = Object.assign(document.createElement('a'), { href: url, download: name });
+      document.body.append(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      status.textContent = 'Backup scaricato.';
+    } else if (how === 'share') {
+      const { uri } = await Filesystem.writeFile({ path: `backup/${name}`, data: text, directory: 'CACHE', encoding: 'utf8', recursive: true });
+      try {
+        await Share.share({ title: 'Backup di Ascolti', files: [uri], dialogTitle: 'Dove vuoi salvare il backup?' });
+      } catch (e) {
+        if (/cancel/i.test(String(e?.message || e))) { status.textContent = ''; return; } // menu chiuso senza scegliere
+        throw e;
+      }
+      status.textContent = 'Backup condiviso.';
+    } else {
+      // Fino ad Android 10 scrivere in Documenti richiede il permesso della memoria
+      try {
+        const perm = await Filesystem.checkPermissions();
+        if (perm.publicStorage !== 'granted' && (await Filesystem.requestPermissions()).publicStorage !== 'granted') {
+          status.textContent = 'Senza il permesso della memoria non posso salvare in Documenti: usa «Condividi…».';
+          return;
+        }
+      } catch {}
+      await Filesystem.writeFile({ path: `Ascolti/${name}`, data: text, directory: 'DOCUMENTS', encoding: 'utf8', recursive: true });
+      status.textContent = `Salvato in Documenti/Ascolti/${name}`;
+    }
+    settings.lastBackup = Date.now();
+    saveSettings();
+    renderBackupInfo();
+  } catch (e) {
+    status.textContent = how === 'share'
+      ? `Non riesco a condividere il backup (${e?.message || e}).`
+      : 'Non riesco a scrivere in Documenti: usa «Condividi…» e scegli dove salvarlo.';
+  }
+}
+
+// Accetta i backup di questa versione ({ albums: [...] }) e quelli vecchi (solo la lista)
+function restoreFromText(text) {
+  let data;
+  try { data = JSON.parse(text); } catch { toast('Il file non è un backup di Ascolti'); return; }
+  const list = Array.isArray(data) ? data : Array.isArray(data?.albums) ? data.albums : null;
+  if (!list) { toast('Il file non è un backup di Ascolti'); return; }
+  const ids = new Set(albums.map((a) => a.id));
+  const valid = list.filter((a) => a && typeof a.id === 'string' && typeof a.title === 'string');
+  const fresh = valid.filter((a) => !ids.has(a.id));
+  albums.push(...fresh);
+  saveAlbums(); render(); renderBackupBanner();
+  const skipped = valid.length - fresh.length;
+  const restored = fresh.length === 1 ? 'Ripristinato 1 album' : `Ripristinati ${fresh.length} album`;
+  toast(restored + (skipped ? ` (${skipped} già ${skipped === 1 ? 'presente' : 'presenti'})` : ''));
+}
+
+$('#restore-file').addEventListener('change', (e) => {
+  const file = e.target.files?.[0];
+  e.target.value = ''; // così si può scegliere di nuovo lo stesso file
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => restoreFromText(String(reader.result || ''));
+  reader.onerror = () => toast('Non riesco a leggere il file');
+  reader.readAsText(file);
+});
+
+function renderBackupInfo() {
+  $('#backup-info').textContent = (settings.lastBackup
+    ? `Ultimo backup: ${fmtDate(settings.lastBackup)}.`
+    : 'Non hai ancora fatto un backup.') + ' La lista sta solo su questo telefono: tienine una copia.';
+  renderBackupBanner();
+}
+
+// Promemoria in cima alla lista se l'ultimo backup (o il primo album, se non l'hai mai fatto) ha più di un mese
+function renderBackupBanner() {
+  const first = albums.reduce((m, a) => Math.min(m, a.addedAt || Infinity), Infinity);
+  const since = settings.lastBackup || first;
+  const due = albums.length > 0 && Number.isFinite(since) && Date.now() - since > MONTH
+    && Date.now() > (settings.backupSnooze || 0);
+  $('#backup-banner').hidden = !due;
+}
+
 
 /* ---------- Aggiornamenti (release GitHub) ---------- */
 const REPO = 'dariotronic/ascolti-todo';
@@ -670,14 +908,31 @@ document.addEventListener('click', (e) => {
       results = []; renderResults(); $('#status').textContent = '';
       $('#q').focus();
       break;
-    case 'open-manual': {
-      const f = $('#manual-form'); f.reset();
-      f.elements.title.value = $('#q').value.trim();
-      openLayer('manual'); setTimeout(() => f.elements.title.focus(), 60);
+    case 'open-manual': openForm('add'); break;
+    case 'edit': { // dalla scheda dell'album: si chiude la scheda e si apre il modulo
+      const a = albums.find((x) => x.id === id);
+      closeLayer();
+      if (a) openForm('edit', a);
       break;
     }
+    case 'pick-cover': openCoverPicker(); break;
+    case 'choose-cover': chooseCover(+el.dataset.i); break;
+    case 'remove-cover': form.cover = ''; renderFormCover(); break;
+    case 'clear-filter':
+      filterText = ''; $('#filter').value = ''; $('#filter-clear').hidden = true; render();
+      break;
+    case 'backup-docs': saveBackup('documents'); break;
+    case 'backup-share': saveBackup('share'); break;
+    case 'backup-later': // il promemoria torna tra una settimana
+      settings.backupSnooze = Date.now() + 7 * 24 * 60 * 60 * 1000; saveSettings(); renderBackupBanner();
+      break;
+    case 'backup-open':
+      $('[data-act="open-settings"]').click();
+      setTimeout(() => $('#backup-section').scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+      break;
     case 'open-settings':
-      $('#backup').value = '';
+      $('#backup-status').textContent = '';
+      renderBackupInfo();
       $('#app-version').textContent = appVersion ? `Versione installata: ${appVersion}` : 'Versione non disponibile nel browser.';
       $('#upd-status').textContent = '';
       openLayer('settings');
@@ -685,10 +940,28 @@ document.addEventListener('click', (e) => {
     case 'check-update': manualUpdateCheck(); break;
     case 'upd-download': downloadUpdate(); break;
     case 'upd-install': installUpdate(); break;
-    case 'export': $('#backup').value = JSON.stringify(albums); $('#backup').select(); break;
-    case 'import': importBackup(); break;
   }
 });
+
+// Filtro della lista: si aggiorna mentre scrivi
+$('#filter').addEventListener('input', (e) => {
+  filterText = e.target.value;
+  $('#filter-clear').hidden = !filterText;
+  render();
+});
+$('#filter').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
+$('#sort').addEventListener('change', (e) => {
+  settings.sort = e.target.value; saveSettings(); render(); window.scrollTo(0, 0);
+});
+
+// Ricerca della copertina: stessa logica della ricerca degli album
+let coverTimer;
+$('#cq').addEventListener('input', () => { clearTimeout(coverTimer); coverTimer = setTimeout(searchCovers, 450); });
+$('#cq').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { clearTimeout(coverTimer); searchCovers(); e.target.blur(); }
+});
+// Il titolo scritto aggiorna l'iniziale della copertina segnaposto
+$('#manual-form').elements.title.addEventListener('input', () => { if (!form.cover) renderFormCover(); });
 
 const syncClear = () => { $('#q-clear').hidden = !$('#q').value; };
 $('#q').addEventListener('input', () => {
@@ -699,20 +972,7 @@ $('#q').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { clearTimeout(searchTimer); runSearch(); e.target.blur(); }
 });
 
-$('#manual-form').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const f = e.target;
-  const now = Date.now();
-  albums.push({
-    id: `manual:${now}`, source: 'manual', sourceId: String(now),
-    title: f.elements.title.value.trim(), artist: f.elements.artist.value.trim(), year: f.elements.year.value.trim(),
-    cover: '', url: '', addedAt: now, listenedAt: null,
-  });
-  saveAlbums();
-  while (stack.length) closeLayer();
-  tab = 'todo'; render();
-  toast('Album aggiunto');
-});
+$('#manual-form').addEventListener('submit', submitForm);
 
 // Tasto indietro di Android: chiude prima gli overlay
 if (Plugins.App) {
@@ -730,6 +990,7 @@ load().then(async () => {
   applyTheme();
   applyView();
   render();
+  renderBackupBanner();
   if (Plugins.App) {
     try { appVersion = (await Plugins.App.getInfo()).version; } catch {}
     checkUpdate().catch(() => {});

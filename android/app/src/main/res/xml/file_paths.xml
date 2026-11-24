@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Il FileProvider espone solo la cartella degli aggiornamenti scaricati (cache/updates). -->
+<!-- Il FileProvider espone solo: aggiornamenti scaricati (cache/updates) e file di backup da condividere (cache/backup). -->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <cache-path name="updates" path="updates/" />
+    <cache-path name="backup" path="backup/" />
 </paths>

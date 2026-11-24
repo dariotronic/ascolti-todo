@@ -30,6 +30,35 @@
       </button>
     </header>
     <div id="update-banner" class="update-banner" hidden></div>
+    <div id="backup-banner" class="update-banner" hidden>
+      <div class="upd-row">
+        <span>Non fai un backup da più di un mese</span>
+        <span class="banner-actions">
+          <button data-act="backup-later" class="muted-btn">Più tardi</button>
+          <button data-act="backup-open">Backup</button>
+        </span>
+      </div>
+    </div>
+    <!-- Filtro e ordinamento della lista -->
+    <div class="list-tools" id="list-tools" hidden>
+      <div class="filter-field">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
+        <input id="filter" type="search" placeholder="Filtra la lista" autocomplete="off" enterkeyhint="done" />
+        <button class="clear-btn" id="filter-clear" data-act="clear-filter" aria-label="Cancella il filtro" hidden>
+          <svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>
+        </button>
+      </div>
+      <div class="sort-field">
+        <select id="sort" aria-label="Ordina">
+          <option value="added">Recenti</option>
+          <option value="artist">Artista</option>
+          <option value="title">Titolo</option>
+          <option value="year-asc">Anno: vecchi</option>
+          <option value="year-desc">Anno: nuovi</option>
+        </select>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>
+      </div>
+    </div>
     <ul class="list" id="list"></ul>
     <p class="empty" id="empty"></p>
     <button class="fab" data-act="open-search" aria-label="Aggiungi album">
@@ -55,20 +84,41 @@
     <div class="manual-link"><button data-act="open-manual">Non lo trovi? Aggiungilo a mano</button></div>
   </section>
 
-  <!-- Inserimento manuale -->
+  <!-- Aggiunta a mano e modifica di un album -->
   <section id="manual" class="screen overlay" hidden>
     <header class="plain-bar">
       <button class="icon-btn" data-act="close" aria-label="Indietro">
         <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
       </button>
-      <h2>Aggiungi a mano</h2>
+      <h2 id="form-title">Aggiungi a mano</h2>
     </header>
     <form id="manual-form" class="form">
+      <div class="cover-edit">
+        <div id="form-cover"></div>
+        <div class="cover-actions">
+          <button type="button" class="ghost" data-act="pick-cover">Scegli copertina</button>
+          <button type="button" class="link-btn" data-act="remove-cover" id="remove-cover">Rimuovi copertina</button>
+        </div>
+      </div>
       <label>Titolo<input name="title" required autocomplete="off" /></label>
       <label>Artista<input name="artist" required autocomplete="off" /></label>
-      <label>Anno<input name="year" inputmode="numeric" maxlength="4" autocomplete="off" /></label>
-      <button class="primary" type="submit">Aggiungi</button>
+      <label>Anno<input name="year" inputmode="numeric" maxlength="4" pattern="\d{4}" title="Anno di 4 cifre" autocomplete="off" /></label>
+      <button class="primary" type="submit" id="form-submit">Aggiungi</button>
     </form>
+  </section>
+
+  <!-- Scelta della copertina -->
+  <section id="covers" class="screen overlay" hidden>
+    <header class="search-bar">
+      <button class="icon-btn" data-act="close" aria-label="Indietro">
+        <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <div class="search-field">
+        <input id="cq" type="search" placeholder="Cerca la copertina" autocomplete="off" enterkeyhint="search" />
+      </div>
+    </header>
+    <p class="status" id="covers-status"></p>
+    <div class="cover-grid" id="cover-grid"></div>
   </section>
 
   <!-- Impostazioni -->
@@ -98,13 +148,16 @@
         </div>
       </div>
 
-      <h3>Backup</h3>
-      <p class="hint">Copia il testo qui sotto per salvare la tua lista, oppure incolla un backup e premi Importa.</p>
-      <textarea id="backup" rows="5" spellcheck="false"></textarea>
+      <h3 id="backup-section">Backup</h3>
+      <p class="hint" id="backup-info"></p>
       <div class="row-btns">
-        <button class="ghost" data-act="export">Esporta</button>
-        <button class="ghost" data-act="import">Importa</button>
+        <button class="ghost" data-act="backup-docs">Salva in Documenti</button>
+        <button class="ghost" data-act="backup-share">Condividi…</button>
       </div>
+      <label class="ghost file-btn">Ripristina da un file
+        <input type="file" id="restore-file" accept="application/json,.json,text/plain" />
+      </label>
+      <p class="status" id="backup-status"></p>
 
       <h3>Aggiornamenti</h3>
       <p class="hint" id="app-version"></p>
