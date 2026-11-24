@@ -4,6 +4,12 @@ Una lista minimale degli album che vuoi ascoltare. Li aggiungi, li spunti man ma
 
 Per ogni album l'app tiene solo **copertina, titolo, artista e anno**. Dove ascoltarlo lo scegli tu: Ascolti non ti chiede nessun account e non si collega al tuo Spotify o ad altri servizi. Se vuoi, però, può aprire la ricerca di un album nella tua app di musica preferita.
 
+
+<p align="center">
+  <img src="docs/screenshots/01-lista.jpg" width="250" alt="La lista degli album da ascoltare">
+  <img src="docs/screenshots/02-schede.jpg" width="250" alt="Vista a schede, due per riga">
+  <img src="docs/screenshots/03-schede-chiaro.jpg" width="250" alt="Tema chiaro con tre schede per riga">
+</p>
 ## Cosa fa
 
 ### Aggiungere un album
@@ -12,6 +18,12 @@ Per ogni album l'app tiene solo **copertina, titolo, artista e anno**. Dove asco
 - **Dal link copiato**: copia il link di un album (per esempio da una chat), tocca **+** e poi **Aggiungi dal link copiato**. L'album va dritto in *Da ascoltare*, con *Annulla*. Funziona con link di Spotify, Apple Music, Deezer e Bandcamp; se l'album c'è già, l'app te lo dice.
 - **Da altre app**: da Spotify, Apple Music, Deezer, Bandcamp o dal browser tocca *Condividi* → **Ascolti**. L'album letto dal link compare in cima ai risultati, segnato *dal link*, con sotto la ricerca normale nel caso abbia letto male. Con i siti che non riconosce, l'app cerca il titolo della pagina.
 - **A mano**: se non lo trovi, *Non lo trovi? Aggiungilo a mano*. Puoi scegliere anche la copertina tra quelle trovate.
+
+<p align="center">
+  <img src="docs/screenshots/04-ricerca.jpg" width="250" alt="Ricerca: album trovati su iTunes, Deezer e MusicBrainz">
+  <img src="docs/screenshots/05-link-copiato.jpg" width="250" alt="Aggiungi dal link copiato">
+  <img src="docs/screenshots/06-dal-link.jpg" width="250" alt="Album letto da un link di Spotify, in cima ai risultati">
+</p>
 
 ### La lista
 
@@ -23,6 +35,16 @@ Per ogni album l'app tiene solo **copertina, titolo, artista e anno**. Dove asco
 - **Lista o schede**: da *Impostazioni → Vista a schede* le copertine si vedono in griglia, 2 o 3 per riga.
 - Mentre scorri, schede, filtro e ordinamento restano in alto.
 
+<p align="center">
+  <img src="docs/screenshots/09-gesti.jpg" width="250" alt="Gesti: verso destra ascoltato, verso sinistra elimina">
+  <img src="docs/screenshots/07-filtro.jpg" width="250" alt="Filtro della lista per anno">
+  <img src="docs/screenshots/08-ordina.jpg" width="250" alt="Pannello per ordinare la lista">
+</p>
+<p align="center">
+  <img src="docs/screenshots/11-dado.jpg" width="250" alt="Cosa ascolto adesso? Un album a caso">
+  <img src="docs/screenshots/10-selezione.jpg" width="250" alt="Selezione di più album da eliminare">
+</p>
+
 ### La scheda dell'album
 
 Tocca un album per aprirne la scheda:
@@ -33,6 +55,12 @@ Tocca un album per aprirne la scheda:
 - **Modifica**: titolo, artista, anno e copertina, da scegliere tra quelle trovate su iTunes, Deezer e MusicBrainz.
 - **Elimina**.
 
+<p align="center">
+  <img src="docs/screenshots/12-scheda.jpg" width="250" alt="Scheda dell'album: copia, Cerca su Spotify, modifica">
+  <img src="docs/screenshots/13-modifica.jpg" width="250" alt="Modifica di un album">
+  <img src="docs/screenshots/14-copertina.jpg" width="250" alt="Scelta della copertina">
+</p>
+
 ### Impostazioni
 
 Dai tre puntini in alto a destra:
@@ -41,6 +69,11 @@ Dai tre puntini in alto a destra:
 - **Vista a schede** e **Schede per riga**.
 - **App di musica** per *Cerca su …* (predefinito: nessuna).
 - **Backup** e **Aggiornamenti** (vedi sotto).
+
+<p align="center">
+  <img src="docs/screenshots/15-impostazioni.jpg" width="250" alt="Impostazioni">
+  <img src="docs/screenshots/16-app-musica.jpg" width="250" alt="Scelta dell'app di musica">
+</p>
 
 ## Installazione
 
@@ -68,6 +101,10 @@ Quando apri l'app, Ascolti controlla se c'è una versione nuova, al massimo una 
 - La prima volta Android ti chiede di **consentire ad Ascolti di installare app**: attiva l'opzione e torna indietro, l'installazione riparte da sola.
 - Anche qui può comparire Play Protect: *Altri dettagli* → *Installa comunque*.
 - Puoi controllare anche a mano da *Impostazioni → Controlla aggiornamenti*.
+
+<p align="center">
+  <img src="docs/screenshots/17-aggiornamento.jpg" width="250" alt="Aggiornamento scaricato dentro l'app">
+</p>
 
 ### Backup e cambio di telefono
 
@@ -173,6 +210,16 @@ Servono JDK 21 e Android SDK (platform 36). Poi `./build.sh` produce `Ascolti.ap
 Per installarla via USB: `adb install -r Ascolti.apk`.
 
 Per fare debug della WebView su una build firmata, aggiungi temporaneamente `"android": { "webContentsDebuggingEnabled": true }` a `capacitor.config.json`, compila con `./build.sh` e collegati da `chrome://inspect`. Poi togli l'opzione: le release non devono averla.
+
+## Screenshot del README
+
+Le immagini in `docs/screenshots/` sono l'app vera (`www/`) con dati di esempio, catturata da Edge senza finestra con uno schermo da telefono emulato (412 px, densità 2):
+
+```bash
+node tools/screenshots/capture.mjs "$PWD/www" "$PWD/docs/screenshots" "$PWD/tools/screenshots/demo.json"
+```
+
+`demo.json` contiene gli album di esempio, con le copertine da iTunes. `extra.json` contiene i risultati di ricerca e le copertine mostrate nelle schermate di ricerca. Le scene, cioè cosa aprire e quale zona ritagliare, sono in fondo a `capture.mjs`.
 
 ## Firma
 
