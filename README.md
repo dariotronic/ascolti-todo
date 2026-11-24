@@ -4,62 +4,94 @@ Una lista minimale degli album che vuoi ascoltare. Li aggiungi, li spunti man ma
 
 Per ogni album l'app tiene solo **copertina, titolo, artista e anno**. Dove ascoltarlo lo scegli tu: Ascolti non ti chiede nessun account e non si collega al tuo Spotify o ad altri servizi. Se vuoi, però, può aprire la ricerca di un album nella tua app di musica preferita.
 
-
-<p align="center">
-  <img src="docs/screenshots/01-lista.jpg" width="250" alt="La lista degli album da ascoltare">
-  <img src="docs/screenshots/02-schede.jpg" width="250" alt="Vista a schede, due per riga">
-  <img src="docs/screenshots/03-schede-chiaro.jpg" width="250" alt="Tema chiaro con tre schede per riga">
-</p>
-
 ## Cosa fa
 
 ### Aggiungere un album
 
-- **Cerca**: tocca **+** e scrivi titolo o artista. L'app cerca insieme nel catalogo di Apple (iTunes), su Deezer e su MusicBrainz, che ha anche le uscite più rare. Mette in cima gli album che corrispondono meglio a quello che hai scritto, e subito sotto le altre edizioni (*Live*, *Remastered*…). La **x** nella barra cancella la ricerca per farne un'altra.
-- **Dal link copiato**: copia il link di un album (per esempio da una chat), tocca **+** e poi **Aggiungi dal link copiato**. L'album va dritto in *Da ascoltare*, con *Annulla*. Funziona con link di Spotify, Apple Music, Deezer e Bandcamp; se l'album c'è già, l'app te lo dice.
-- **Da altre app**: da Spotify, Apple Music, Deezer, Bandcamp o dal browser tocca *Condividi* → **Ascolti**. L'album letto dal link compare in cima ai risultati, segnato *dal link*, con sotto la ricerca normale nel caso abbia letto male. Con i siti che non riconosce, l'app cerca il titolo della pagina.
-- **A mano**: se non lo trovi, *Non lo trovi? Aggiungilo a mano*. Puoi scegliere anche la copertina tra quelle trovate.
+#### Cerca
 
-<p align="center">
-  <img src="docs/screenshots/04-ricerca.jpg" width="250" alt="Ricerca: album trovati su iTunes, Deezer e MusicBrainz">
-  <img src="docs/screenshots/05-link-copiato.jpg" width="250" alt="Aggiungi dal link copiato">
-  <img src="docs/screenshots/06-dal-link.jpg" width="250" alt="Album letto da un link di Spotify, in cima ai risultati">
-</p>
+Tocca **+** e scrivi titolo o artista. L'app cerca insieme nel catalogo di Apple (iTunes), su Deezer e su MusicBrainz, che ha anche le uscite più rare. Mette in cima gli album che corrispondono meglio a quello che hai scritto, e subito sotto le altre edizioni (*Live*, *Remastered*…). La **x** nella barra cancella la ricerca per farne un'altra.
+
+<p align="center"><img src="docs/screenshots/04-ricerca.jpg" width="300" alt="Ricerca: album trovati su iTunes, Deezer e MusicBrainz"></p>
+
+#### Dal link copiato
+
+Copia il link di un album (per esempio da una chat), tocca **+** e poi **Aggiungi dal link copiato**. L'album va dritto in *Da ascoltare*, con *Annulla*. Funziona con link di Spotify, Apple Music, Deezer e Bandcamp; se l'album c'è già, l'app te lo dice.
+
+<p align="center"><img src="docs/screenshots/05-link-copiato.jpg" width="300" alt="Il pulsante Aggiungi dal link copiato"></p>
+
+#### Da altre app
+
+Da Spotify, Apple Music, Deezer, Bandcamp o dal browser tocca *Condividi* → **Ascolti**. L'album letto dal link compare in cima ai risultati, segnato *dal link*, con sotto la ricerca normale nel caso abbia letto male. Con i siti che non riconosce, l'app cerca il titolo della pagina.
+
+<p align="center"><img src="docs/screenshots/06-dal-link.jpg" width="300" alt="Album letto da un link di Spotify, in cima ai risultati"></p>
+
+#### A mano
+
+Se non lo trovi: *Non lo trovi? Aggiungilo a mano*. Puoi scegliere anche la copertina tra quelle trovate (vedi [Modifica](#modifica)).
 
 ### La lista
 
-- **Due liste**: *Da ascoltare* e *Ascoltati*. Tocca il cerchio accanto a un album per spuntarlo; se sbagli, tocca *Annulla*.
-- **Gesti** (vista a lista): scorri un album **verso destra** per segnarlo come ascoltato (in *Ascoltati*: per rimetterlo da ascoltare) e **verso sinistra** per eliminarlo, sempre con *Annulla*.
-- **Filtra e ordina**: sopra ciascuna lista c'è un campo che filtra mentre scrivi (titolo, artista o anno, anche insieme: "radiohead 2001"). Accanto c'è **Ordina**: aggiunti o ascoltati di recente, artista, titolo, anno dal più vecchio o dal più nuovo. Nell'ordine per artista "The" viene ignorato; gli album senza anno vanno in fondo.
-- **Cosa ascolto adesso?**: il **dado** pesca un album a caso tra quelli da ascoltare (se hai scritto un filtro, tra quelli filtrati). Non ti convince? *Pesca un altro*.
-- **Eliminare più album insieme**: tieni premuto un album, tocca gli altri (o *Tutti*) e poi **Elimina**, con *Annulla*.
-- **Lista o schede**: da *Impostazioni → Vista a schede* le copertine si vedono in griglia, 2 o 3 per riga.
-- Mentre scorri, schede, filtro e ordinamento restano in alto.
+#### Da ascoltare e Ascoltati
+
+Tocca il cerchio accanto a un album per spuntarlo: passa tra gli *Ascoltati*. Se sbagli, tocca *Annulla*. Mentre scorri, schede, filtro e ordinamento restano in alto.
+
+<p align="center"><img src="docs/screenshots/01-lista.jpg" width="300" alt="La lista degli album da ascoltare"></p>
+
+#### Gesti
+
+Nella vista a lista scorri un album **verso destra** per segnarlo come ascoltato (in *Ascoltati*: per rimetterlo da ascoltare) e **verso sinistra** per eliminarlo, sempre con *Annulla*.
+
+<p align="center"><img src="docs/screenshots/09-gesti.jpg" width="300" alt="Gesti: verso destra ascoltato, verso sinistra elimina"></p>
+
+#### Filtra e ordina
+
+Sopra ciascuna lista c'è un campo che filtra mentre scrivi: titolo, artista o anno, anche insieme ("radiohead 2001"). Accanto c'è **Ordina**: aggiunti o ascoltati di recente, artista, titolo, anno dal più vecchio o dal più nuovo. Nell'ordine per artista "The" viene ignorato; gli album senza anno vanno in fondo.
 
 <p align="center">
-  <img src="docs/screenshots/09-gesti.jpg" width="250" alt="Gesti: verso destra ascoltato, verso sinistra elimina">
-  <img src="docs/screenshots/07-filtro.jpg" width="250" alt="Filtro della lista per anno">
-  <img src="docs/screenshots/08-ordina.jpg" width="250" alt="Pannello per ordinare la lista">
+  <img src="docs/screenshots/07-filtro.jpg" width="300" alt="Filtro della lista per anno">
+  <img src="docs/screenshots/08-ordina.jpg" width="300" alt="Pannello per ordinare la lista">
 </p>
+
+#### Cosa ascolto adesso?
+
+Il **dado** pesca un album a caso tra quelli da ascoltare (se hai scritto un filtro, tra quelli filtrati). Non ti convince? *Pesca un altro*.
+
+<p align="center"><img src="docs/screenshots/11-dado.jpg" width="300" alt="Cosa ascolto adesso? Un album pescato a caso"></p>
+
+#### Eliminare più album insieme
+
+Tieni premuto un album, tocca gli altri (o *Tutti*) e poi **Elimina**, con *Annulla*.
+
+<p align="center"><img src="docs/screenshots/10-selezione.jpg" width="300" alt="Selezione di più album da eliminare"></p>
+
+#### Lista o schede
+
+Da *Impostazioni → Vista a schede* le copertine si vedono in griglia, 2 o 3 per riga, nel tema scuro o in quello chiaro.
+
 <p align="center">
-  <img src="docs/screenshots/11-dado.jpg" width="250" alt="Cosa ascolto adesso? Un album a caso">
-  <img src="docs/screenshots/10-selezione.jpg" width="250" alt="Selezione di più album da eliminare">
+  <img src="docs/screenshots/02-schede.jpg" width="300" alt="Vista a schede, due per riga">
+  <img src="docs/screenshots/03-schede-chiaro.jpg" width="300" alt="Tema chiaro con tre schede per riga">
 </p>
 
 ### La scheda dell'album
 
-Tocca un album per aprirne la scheda:
+Tocca un album per aprirne la scheda: da qui lo segni come ascoltato (o lo rimetti tra quelli da ascoltare), lo copi, lo cerchi, lo modifichi o lo elimini.
 
-- **Segna come ascoltato** (o rimettilo tra quelli da ascoltare).
+#### Copia e Cerca su …
+
 - **Copia**: l'icona accanto al titolo mette negli appunti artista e titolo, pronti da incollare dove vuoi. È comoda con i nomi in caratteri che non sai scrivere, come i kanji.
 - **Cerca su …**: se in *Impostazioni → App di musica* hai scelto la tua app, la apre già sulla ricerca dell'album. Le app disponibili sono Spotify, Apple Music, YouTube Music, Deezer, Tidal, Amazon Music, Bandcamp e SoundCloud; se l'app non è installata si apre il sito.
-- **Modifica**: titolo, artista, anno e copertina, da scegliere tra quelle trovate su iTunes, Deezer e MusicBrainz.
-- **Elimina**.
+
+<p align="center"><img src="docs/screenshots/12-scheda.jpg" width="300" alt="Scheda dell'album con Copia e Cerca su Spotify"></p>
+
+#### Modifica
+
+Titolo, artista, anno e copertina. **Scegli copertina** cerca su iTunes, Deezer e MusicBrainz e ti mostra quelle trovate: tocca quella che vuoi.
 
 <p align="center">
-  <img src="docs/screenshots/12-scheda.jpg" width="250" alt="Scheda dell'album: copia, Cerca su Spotify, modifica">
-  <img src="docs/screenshots/13-modifica.jpg" width="250" alt="Modifica di un album">
-  <img src="docs/screenshots/14-copertina.jpg" width="250" alt="Scelta della copertina">
+  <img src="docs/screenshots/13-modifica.jpg" width="300" alt="Modifica di un album">
+  <img src="docs/screenshots/14-copertina.jpg" width="300" alt="Scelta della copertina">
 </p>
 
 ### Impostazioni
@@ -71,10 +103,13 @@ Dai tre puntini in alto a destra:
 - **App di musica** per *Cerca su …* (predefinito: nessuna).
 - **Backup** e **Aggiornamenti** (vedi sotto).
 
-<p align="center">
-  <img src="docs/screenshots/15-impostazioni.jpg" width="250" alt="Impostazioni">
-  <img src="docs/screenshots/16-app-musica.jpg" width="250" alt="Scelta dell'app di musica">
-</p>
+<p align="center"><img src="docs/screenshots/15-impostazioni.jpg" width="300" alt="Impostazioni"></p>
+
+#### App di musica
+
+Tocca il nome dell'app e scegli dal pannello quella in cui aprire *Cerca su …*.
+
+<p align="center"><img src="docs/screenshots/16-app-musica.jpg" width="300" alt="Scelta dell'app di musica"></p>
 
 ## Installazione
 
@@ -103,9 +138,7 @@ Quando apri l'app, Ascolti controlla se c'è una versione nuova, al massimo una 
 - Anche qui può comparire Play Protect: *Altri dettagli* → *Installa comunque*.
 - Puoi controllare anche a mano da *Impostazioni → Controlla aggiornamenti*.
 
-<p align="center">
-  <img src="docs/screenshots/17-aggiornamento.jpg" width="250" alt="Aggiornamento scaricato dentro l'app">
-</p>
+<p align="center"><img src="docs/screenshots/17-aggiornamento.jpg" width="300" alt="Aggiornamento scaricato dentro l'app"></p>
 
 ### Backup e cambio di telefono
 
