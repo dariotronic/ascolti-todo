@@ -325,14 +325,14 @@ function closeLayer() {
 /* ---------- App di musica preferita e copia ---------- */
 // Indirizzi di ricerca web: Android li apre nell'app, se è installata, altrimenti nel browser
 const MUSIC_APPS = {
-  spotify: { name: 'Spotify', url: (q) => `https://open.spotify.com/search/${encodeURIComponent(q)}` },
-  apple: { name: 'Apple Music', url: (q) => `https://music.apple.com/search?term=${encodeURIComponent(q)}` },
-  youtube: { name: 'YouTube Music', url: (q) => `https://music.youtube.com/search?q=${encodeURIComponent(q)}` },
-  deezer: { name: 'Deezer', url: (q) => `https://www.deezer.com/search/${encodeURIComponent(q)}` },
-  tidal: { name: 'Tidal', url: (q) => `https://listen.tidal.com/search?q=${encodeURIComponent(q)}` },
-  amazon: { name: 'Amazon Music', url: (q) => `https://music.amazon.com/search/${encodeURIComponent(q)}` },
-  bandcamp: { name: 'Bandcamp', url: (q) => `https://bandcamp.com/search?q=${encodeURIComponent(q)}` },
-  soundcloud: { name: 'SoundCloud', url: (q) => `https://soundcloud.com/search?q=${encodeURIComponent(q)}` },
+  spotify: { name: 'Spotify', color: '#1DB954', url: (q) => `https://open.spotify.com/search/${encodeURIComponent(q)}` },
+  apple: { name: 'Apple Music', color: '#FA2D48', url: (q) => `https://music.apple.com/search?term=${encodeURIComponent(q)}` },
+  youtube: { name: 'YouTube Music', color: '#FF0033', url: (q) => `https://music.youtube.com/search?q=${encodeURIComponent(q)}` },
+  deezer: { name: 'Deezer', color: '#A238FF', url: (q) => `https://www.deezer.com/search/${encodeURIComponent(q)}` },
+  tidal: { name: 'Tidal', color: '#8A8F98', url: (q) => `https://listen.tidal.com/search?q=${encodeURIComponent(q)}` },
+  amazon: { name: 'Amazon Music', color: '#25D1DA', url: (q) => `https://music.amazon.com/search/${encodeURIComponent(q)}` },
+  bandcamp: { name: 'Bandcamp', color: '#1DA0C3', url: (q) => `https://bandcamp.com/search?q=${encodeURIComponent(q)}` },
+  soundcloud: { name: 'SoundCloud', color: '#FF5500', url: (q) => `https://soundcloud.com/search?q=${encodeURIComponent(q)}` },
 };
 // Testo da cercare: artista e titolo, come si scrive in qualsiasi barra di ricerca
 const searchText = (a) => [a.artist, a.title].filter(Boolean).join(' ').trim();
@@ -999,13 +999,38 @@ function applyView() {
   });
 }
 
-// App di musica preferita: le voci vengono dallo stesso elenco usato per "Cerca su …"
-$('#music-app').innerHTML = '<option value="">Nessuna</option>'
-  + Object.entries(MUSIC_APPS).map(([k, app]) => `<option value="${k}">${esc(app.name)}</option>`).join('');
-$('#music-app').addEventListener('change', (e) => {
-  settings.musicApp = e.target.value; saveSettings();
-  toast(e.target.value ? `Cercherai su ${MUSIC_APPS[e.target.value].name}` : 'Nessuna app di musica');
-});
+// App di musica preferita: pannello che sale dal basso (al posto del menu di Android),
+// con le voci dello stesso elenco usato per "Cerca su …"
+function renderMusicAppLabel() {
+  $('#music-app-label').textContent = MUSIC_APPS[settings.musicApp]?.name || 'Nessuna';
+}
+
+function openMusicAppPicker() {
+  const current = MUSIC_APPS[settings.musicApp] ? settings.musicApp : '';
+  const option = (key, name, color) => `
+    <button class="pick-option ${key === current ? 'on' : ''}" data-act="set-music-app" data-app="${key}"
+      role="radio" aria-checked="${key === current}">
+      <i class="pick-dot" style="${color ? `background:${color}` : ''}"></i>
+      <span>${esc(name)}</span>
+      ${key === current ? ICON.check : ''}
+    </button>`;
+  $('#sheet').innerHTML = `
+    <p class="sheet-kicker">App di musica</p>
+    <p class="pick-hint">Dove aprire la ricerca di un album con «Cerca su …».</p>
+    <div class="pick-list" role="radiogroup">
+      ${option('', 'Nessuna', '')}
+      ${Object.entries(MUSIC_APPS).map(([k, app]) => option(k, app.name, app.color)).join('')}
+    </div>`;
+  openLayer('sheet');
+}
+
+function setMusicApp(key) {
+  settings.musicApp = MUSIC_APPS[key] ? key : '';
+  saveSettings();
+  renderMusicAppLabel();
+  closeLayer();
+  toast(settings.musicApp ? `Cercherai su ${MUSIC_APPS[settings.musicApp].name}` : 'Nessuna app di musica');
+}
 
 $('#view-switch').addEventListener('change', (e) => {
   settings.view = e.target.checked ? 'grid' : 'list';
@@ -1275,6 +1300,8 @@ document.addEventListener('click', (e) => {
     case 'random': pickRandom(); break;
     case 'paste-link': pasteLink(); break;
     case 'copy-album': copyAlbum(id); break;
+    case 'pick-music-app': openMusicAppPicker(); break;
+    case 'set-music-app': setMusicApp(el.dataset.app); break;
     case 'random-again': closeLayer(); pickRandom(); break;
     case 'choose-cover': chooseCover(+el.dataset.i); break;
     case 'remove-cover': form.cover = ''; renderFormCover(); break;
@@ -1293,7 +1320,7 @@ document.addEventListener('click', (e) => {
     case 'open-settings':
       $('#backup-status').textContent = '';
       renderBackupInfo();
-      $('#music-app').value = settings.musicApp || '';
+      renderMusicAppLabel();
       $('#app-version').textContent = appVersion ? `Versione installata: ${appVersion}` : 'Versione non disponibile nel browser.';
       $('#upd-status').textContent = '';
       openLayer('settings');

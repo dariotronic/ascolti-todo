@@ -408,3 +408,26 @@ body::after {
   font: 500 15px var(--sans); text-transform: none; letter-spacing: 0; max-width: 52vw;
 }
 .app-hint { margin-top: -8px; font-size: 12px; }
+
+/* Scelta dell'app di musica: pulsante nelle impostazioni e pannello dal basso */
+.picker-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 2px 8px 12px; border-radius: 999px;
+  font: 500 15px var(--sans); color: var(--ink);
+}
+.picker-btn:active { background: var(--line); }
+.picker-btn svg { width: 16px; height: 16px; color: var(--muted); }
+.pick-hint { margin: -8px 0 14px; font-size: 12.5px; color: var(--muted); }
+.pick-list { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.pick-option {
+  display: flex; align-items: center; gap: 14px; width: 100%; text-align: left;
+  padding: 14px 2px; border-bottom: 1px solid var(--line); font-size: 15px; color: var(--ink);
+}
+.pick-option:active { background: color-mix(in srgb, var(--line) 50%, transparent); }
+.pick-option span { flex: 1; }
+.pick-option.on span { font-weight: 600; }
+.pick-option svg { width: 20px; height: 20px; color: var(--ink); }
+.pick-dot {
+  width: 12px; height: 12px; border-radius: 50%; flex: none;
+  background: transparent; border: 1.5px solid var(--muted); /* "Nessuna": cerchio vuoto */
+}
+.pick-dot[style*="background"] { border: 0; }
