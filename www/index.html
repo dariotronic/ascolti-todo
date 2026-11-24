@@ -11,7 +11,16 @@
 <body>
   <!-- Lista principale -->
   <main id="home" class="screen">
-    <header class="top">
+    <!-- Selezione multipla (tieni premuto un album) -->
+    <header class="top select-bar" id="select-bar" hidden>
+      <button class="icon-btn" data-act="select-exit" aria-label="Esci dalla selezione">
+        <svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>
+      </button>
+      <span class="select-count" id="select-count"></span>
+      <button class="select-action" data-act="select-all">Tutti</button>
+      <button class="select-action danger" data-act="select-delete">Elimina</button>
+    </header>
+    <header class="top" id="top-bar">
       <nav class="tabs" id="tabs">
         <button data-act="tab" data-tab="todo">Da ascoltare<sup id="count-todo"></sup></button>
         <button data-act="tab" data-tab="done">Ascoltati<sup id="count-done"></sup></button>

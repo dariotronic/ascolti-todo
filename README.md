@@ -9,6 +9,7 @@ Per ogni album l'app tiene solo **copertina, titolo, artista e anno**. Dove asco
 - **Due liste**: *Da ascoltare* e *Ascoltati*. Tocca il cerchio accanto a un album per spuntarlo, e se sbagli tocca *Annulla*.
 - **Ricerca**: tocca **+** e scrivi album o artista. I risultati arrivano dal catalogo di Apple (iTunes); se lì non c'è nulla, da Deezer e poi da MusicBrainz, che ha anche le uscite più rare. Se non lo trovi, puoi **aggiungerlo a mano**.
 - **Scheda dell'album**: tocca un album per vederlo in grande, rimetterlo tra quelli da ascoltare o eliminarlo.
+- **Eliminare più album insieme**: tieni premuto un album, tocca gli altri che vuoi togliere (o *Tutti*) e poi **Elimina**. Funziona in entrambe le liste, e subito dopo puoi ancora toccare *Annulla*.
 - **Tema scuro o chiaro**, dalle Impostazioni (i tre puntini in alto).
 - **Backup** della lista, da tenere dove vuoi.
 - **Aggiornamenti** direttamente dall'app.

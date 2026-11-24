@@ -82,16 +82,32 @@ function render() {
   document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
 
   const items = tab === 'todo' ? todo : done;
-  $('#list').innerHTML = items.map((a) => `
-    <li class="row" data-act="detail" data-id="${esc(a.id)}" data-title="${esc(a.title)}">
+  visibleIds = items.map((a) => a.id);
+  $('#list').innerHTML = items.map((a) => {
+    const picked = selected.has(a.id);
+    // In selezione il tocco sceglie la riga; altrimenti apre la scheda e il cerchio spunta l'ascolto
+    const action = selecting
+      ? `<span class="check pick ${picked ? 'on' : ''}" aria-hidden="true"><i>${ICON.check}</i></span>`
+      : `<button class="check ${a.listenedAt ? 'on' : ''}" data-act="toggle" data-id="${esc(a.id)}"
+        aria-label="${a.listenedAt ? 'Segna da ascoltare' : 'Segna come ascoltato'}"><i>${ICON.check}</i></button>`;
+    return `
+    <li class="row ${picked ? 'picked' : ''}" data-act="${selecting ? 'select' : 'detail'}" data-id="${esc(a.id)}" data-title="${esc(a.title)}"
+      ${selecting ? `role="checkbox" aria-checked="${picked}"` : ''}>
       ${coverHtml(a)}
       <div class="meta">
         <div class="title">${esc(a.title)}</div>
         <div class="sub">${esc(tab === 'done' ? `${a.artist} · ${fmtDate(a.listenedAt)}` : subLine(a))}</div>
       </div>
-      <button class="check ${a.listenedAt ? 'on' : ''}" data-act="toggle" data-id="${esc(a.id)}"
-        aria-label="${a.listenedAt ? 'Segna da ascoltare' : 'Segna come ascoltato'}"><i>${ICON.check}</i></button>
-    </li>`).join('');
+      ${action}
+    </li>`;
+  }).join('');
+
+  $('#select-bar').hidden = !selecting;
+  $('#top-bar').hidden = selecting;
+  $('.fab').hidden = selecting;
+  $('#select-count').textContent = selected.size === 1 ? '1 selezionato' : `${selected.size} selezionati`;
+  $('[data-act="select-delete"]').disabled = selected.size === 0;
+  $('[data-act="select-all"]').textContent = selected.size === visibleIds.length && visibleIds.length ? 'Nessuno' : 'Tutti';
 
   const empty = $('#empty');
   empty.hidden = items.length > 0;
@@ -99,6 +115,71 @@ function render() {
     ? (albums.length ? 'Hai ascoltato tutto. Aggiungi qualcosa di nuovo.' : 'Nessun album in lista. Tocca + per aggiungerne uno.')
     : 'Gli album che spunti finiranno qui.';
 }
+
+/* ---------- Selezione multipla ---------- */
+let selecting = false;
+const selected = new Set();
+let visibleIds = [];
+
+function startSelection(id) {
+  selecting = true;
+  selected.clear();
+  if (id) selected.add(id);
+  navigator.vibrate?.(15);
+  render();
+}
+function exitSelection() {
+  if (!selecting) return false;
+  selecting = false;
+  selected.clear();
+  render();
+  return true;
+}
+function togglePick(id) {
+  if (selected.has(id)) selected.delete(id); else selected.add(id);
+  render();
+}
+function pickAll() {
+  if (selected.size === visibleIds.length) selected.clear();
+  else visibleIds.forEach((id) => selected.add(id));
+  render();
+}
+function deleteSelected() {
+  if (!selected.size) return;
+  const removed = albums.filter((a) => selected.has(a.id));
+  albums = albums.filter((a) => !selected.has(a.id));
+  saveAlbums();
+  exitSelection();
+  toast(removed.length === 1 ? 'Album eliminato' : `${removed.length} album eliminati`, () => {
+    albums.push(...removed); saveAlbums(); render();
+  });
+}
+
+// Tieni premuto un album per iniziare la selezione
+(() => {
+  let timer = null, startX = 0, startY = 0;
+  let suppressClick = false;
+  const cancel = () => { clearTimeout(timer); timer = null; };
+  const list = $('#list');
+  list.addEventListener('pointerdown', (e) => {
+    suppressClick = false;
+    const row = e.target.closest('.row');
+    if (!row || selecting || e.target.closest('[data-act="toggle"]')) return;
+    startX = e.clientX; startY = e.clientY;
+    cancel();
+    timer = setTimeout(() => { timer = null; suppressClick = true; startSelection(row.dataset.id); }, 450);
+  });
+  list.addEventListener('pointermove', (e) => {
+    if (timer && Math.hypot(e.clientX - startX, e.clientY - startY) > 10) cancel();
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach((t) => list.addEventListener(t, cancel));
+  window.addEventListener('scroll', cancel, { passive: true });
+  // Il clic che segue la pressione lunga non deve deselezionare la riga appena scelta
+  list.addEventListener('click', (e) => {
+    if (suppressClick) { suppressClick = false; e.stopPropagation(); e.preventDefault(); }
+  }, true);
+  list.addEventListener('contextmenu', (e) => e.preventDefault());
+})();
 
 function toggleListened(id, rowEl) {
   const a = albums.find((x) => x.id === id);
@@ -546,7 +627,11 @@ document.addEventListener('click', (e) => {
   if (!el) return;
   const { act, id } = el.dataset;
   switch (act) {
-    case 'tab': tab = el.dataset.tab; render(); window.scrollTo(0, 0); break;
+    case 'tab': tab = el.dataset.tab; selecting = false; selected.clear(); render(); window.scrollTo(0, 0); break;
+    case 'select': togglePick(id); break;
+    case 'select-exit': exitSelection(); break;
+    case 'select-all': pickAll(); break;
+    case 'select-delete': deleteSelected(); break;
     case 'toggle': e.stopPropagation(); toggleListened(id, el.closest('.row')); break;
     case 'detail': openDetail(id); break;
     case 'sheet-toggle': closeLayer(); toggleListened(id); break;
@@ -610,7 +695,7 @@ $('#manual-form').addEventListener('submit', (e) => {
 // Tasto indietro di Android: chiude prima gli overlay
 if (Plugins.App) {
   Plugins.App.addListener('backButton', () => {
-    if (!closeLayer()) Plugins.App.minimizeApp();
+    if (!closeLayer() && !exitSelection()) Plugins.App.minimizeApp();
   });
   // Anche quando l'app torna in primo piano (sempre con il limite orario)
   Plugins.App.addListener('resume', () => {
