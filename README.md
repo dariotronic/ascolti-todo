@@ -4,6 +4,22 @@ Una lista minimale degli album che vuoi ascoltare. Li aggiungi, li spunti man ma
 
 Per ogni album l'app tiene solo **copertina, titolo, artista e anno**. Dove ascoltarlo lo scegli tu: Ascolti non ti chiede nessun account e non si collega al tuo Spotify o ad altri servizi. Se vuoi, però, può aprire la ricerca di un album nella tua app di musica preferita.
 
+**Indice**
+
+- [Cosa fa](#cosa-fa)
+  - [Aggiungere un album](#aggiungere-un-album): [Cerca](#cerca) · [Dal link copiato](#dal-link-copiato) · [Da altre app](#da-altre-app) · [A mano](#a-mano)
+  - [La lista](#la-lista): [Da ascoltare e Ascoltati](#da-ascoltare-e-ascoltati) · [Gesti](#gesti) · [Filtra e ordina](#filtra-e-ordina) · [Cosa ascolto adesso?](#cosa-ascolto-adesso) · [Eliminare più album insieme](#eliminare-più-album-insieme) · [Lista o schede](#lista-o-schede)
+  - [La scheda dell'album](#la-scheda-dellalbum): [Copia e Cerca su …](#copia-e-cerca-su-) · [Modifica](#modifica)
+  - [Impostazioni](#impostazioni): [App di musica](#app-di-musica)
+- [Installazione](#installazione)
+  - [L'avviso di Play Protect](#lavviso-di-play-protect)
+  - [Aggiornamenti](#aggiornamenti)
+  - [Backup e cambio di telefono](#backup-e-cambio-di-telefono)
+  - [Privacy](#privacy)
+  - [Riconoscimenti](#riconoscimenti)
+- [Per chi sviluppa](#per-chi-sviluppa)
+  - [Struttura](#struttura) · [Ricerca](#ricerca) · [Lettura dei link](#lettura-dei-link) · [Aggiornamenti dentro l'app](#aggiornamenti-dentro-lapp) · [Pubblicare una nuova versione](#pubblicare-una-nuova-versione) · [Compilare in locale](#compilare-in-locale) · [Screenshot del README](#screenshot-del-readme) · [Firma](#firma)
+
 ## Cosa fa
 
 ### Aggiungere un album
