@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
-# Pubblica una nuova versione su GitHub:  ./release.sh 1.1.0 "Cosa cambia"
-# Aggiorna la versione, compila l'APK, fa commit + tag e crea la release con l'APK allegata.
-# L'app installata la trova da sola (controllo all'avvio, al massimo una volta l'ora).
+# Pubblica una nuova versione:  ./release.sh 1.0.1 "Cosa cambia"
+# Avvia il workflow "Release" su GitHub, che compila, firma (chiave nei secret della repo),
+# fa commit della versione, tag e Release con l'APK. Non serve la chiave su questo PC.
+# Lo stesso si può fare dal sito: Actions → Release → Run workflow.
 set -e
 cd "$(dirname "$0")"
-V="$1"; NOTES="${2:-Versione $1}"
+V="$1"; NOTES="${2:-}"
 [[ "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Uso: ./release.sh X.Y.Z \"note\""; exit 1; }
-git rev-parse "v$V" >/dev/null 2>&1 && { echo "La versione v$V esiste già"; exit 1; }
+git diff --quiet && git diff --cached --quiet || { echo "Ci sono modifiche non committate: fai prima il commit."; exit 1; }
 
-npm version "$V" --no-git-tag-version --allow-same-version >/dev/null
-./build.sh
-git add -A
-git diff --cached --quiet || git commit -m "Versione $V" -m "$NOTES"
-git tag "v$V"
-git push origin HEAD "v$V"
-gh release create "v$V" "Ascolti.apk#Ascolti-$V.apk" --title "Ascolti $V" --notes "$NOTES"
-echo "Pubblicata la versione $V"
+git push origin HEAD
+gh workflow run release.yml -f version="$V" -f notes="$NOTES"
+echo "Workflow avviato, attendo che parta…"
+sleep 6
+RUN=$(gh run list --workflow=release.yml --limit 1 --json databaseId -q '.[0].databaseId')
+gh run watch "$RUN" --exit-status
+git pull --ff-only --quiet
+echo "Pubblicata la versione $V: $(gh release view "v$V" --json url -q .url)"
