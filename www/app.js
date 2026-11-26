@@ -410,7 +410,9 @@ function toast(text, undo) {
   const el = $('#toast');
   el.innerHTML = `<span>${esc(text)}</span>${undo ? '<button>Annulla</button>' : ''}`;
   el.hidden = false;
-  if (undo) el.querySelector('button').onclick = () => { el.hidden = true; undo(); };
+  el.classList.toggle('has-undo', !!undo);
+  // Con Annulla tutto il toast è il pulsante: il solo testo «ANNULLA» è troppo piccolo da centrare al primo tocco
+  el.onclick = undo ? () => { if (el.hidden) return; el.hidden = true; clearTimeout(toastTimer); undo(); } : null;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { el.hidden = true; }, 3500);
 }

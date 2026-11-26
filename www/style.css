@@ -346,7 +346,12 @@ body::after {
   display: flex; align-items: center; gap: 16px; padding: 11px 20px;
   font-size: 13px; white-space: nowrap; animation: fade .2s;
 }
-.toast button { font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: 11.5px; }
+.toast.has-undo { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.toast.has-undo:active { opacity: .85; }
+.toast button {
+  font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: 11.5px;
+  padding: 11px 20px 11px 8px; margin: -11px -20px -11px -8px; /* area di tocco ampia, stesso aspetto */
+}
 
 /* Caricamento */
 .spinner {
