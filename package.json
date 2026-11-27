@@ -2,7 +2,9 @@
   "name": "ascolti",
   "version": "1.8.3",
   "description": "Lista di album da ascoltare",
-  "scripts": {},
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",

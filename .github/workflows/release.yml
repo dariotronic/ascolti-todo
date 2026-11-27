@@ -56,6 +56,10 @@ jobs:
 
       - run: npm ci
 
+      # Lettura dei link e classifica della ricerca (test/): se un test fallisce, la release non parte
+      - name: Test
+        run: npm test
+
       - name: Imposta la versione
         run: npm version "$VERSION" --no-git-tag-version --allow-same-version
 

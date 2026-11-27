@@ -6,7 +6,12 @@
 set -e
 cd "$(dirname "$0")"
 V="$1"; NOTES="${2:-}"
-[[ "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Uso: ./release.sh X.Y.Z \"note\""; exit 1; }
+[[ "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Uso: ./release.sh X.Y.Z [\"note\"]"; exit 1; }
+# Senza note: quelle della versione in www/novita.js (le stesse che l'app mostra dopo l'aggiornamento)
+if [ -z "$NOTES" ]; then
+  NOTES=$(node -e "process.stdout.write(require('./www/novita.js')[process.argv[1]] || '')" "$V")
+  [ -n "$NOTES" ] || { echo "Nessuna nota per $V in www/novita.js: aggiungile o passale come secondo argomento."; exit 1; }
+fi
 git diff --quiet && git diff --cached --quiet || { echo "Ci sono modifiche non committate: fai prima il commit."; exit 1; }
 
 git push origin HEAD

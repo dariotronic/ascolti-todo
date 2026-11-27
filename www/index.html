@@ -4,7 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
   <meta name="color-scheme" content="dark light" />
-  <script>document.documentElement.dataset.theme = localStorage.getItem('theme') || 'dark';</script>
+  <script>
+    // Tema e dimensione del testo prima del primo disegno, per evitare il lampo all'avvio (li riscrive app.js)
+    (() => {
+      const d = document.documentElement, t = localStorage.getItem('theme') || 'dark';
+      d.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t;
+      const fs = +localStorage.getItem('fontScale');
+      if (fs) d.style.setProperty('--fs', fs);
+    })();
+  </script>
   <title>Ascolti</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -20,7 +28,10 @@
         </button>
         <span class="select-count" id="select-count"></span>
         <button class="select-action" data-act="select-all">Tutti</button>
-        <button class="select-action danger" data-act="select-delete">Elimina</button>
+        <button class="icon-btn" data-act="select-listened" aria-label="Segna come ascoltati"></button>
+        <button class="icon-btn danger" data-act="select-delete" aria-label="Elimina" title="Elimina">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3"/></svg>
+        </button>
       </header>
       <header class="top" id="top-bar">
         <nav class="tabs" id="tabs">
@@ -43,6 +54,9 @@
         <button class="sort-btn" data-act="pick-sort" aria-haspopup="dialog" aria-label="Ordina">
           <span id="sort-label">Recenti</span>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>
+        </button>
+        <button class="icon-btn fav-filter" data-act="fav-filter" aria-label="Solo i preferiti" title="Solo i preferiti" aria-pressed="false" hidden>
+          <svg viewBox="0 0 24 24"><path d="M12 19.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 6.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg>
         </button>
         <button class="icon-btn dice" data-act="random" aria-label="Cosa ascolto adesso?" title="Cosa ascolto adesso?">
           <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/><circle cx="9" cy="9" r="1.1" fill="currentColor"/><circle cx="15" cy="15" r="1.1" fill="currentColor"/><circle cx="15" cy="9" r="1.1" fill="currentColor"/><circle cx="9" cy="15" r="1.1" fill="currentColor"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/></svg>
@@ -86,10 +100,14 @@
       </button>
       <p class="hint">Copia il link di un album da Spotify, Apple Music, Deezer o Bandcamp (anche da una chat) e toccalo: l’album va dritto in lista.</p>
     </div>
+    <div class="recent" id="recent" hidden></div>
     <p class="status" id="status"></p>
     <ul class="list" id="results"></ul>
     <div class="manual-link"><button data-act="open-manual">Non lo trovi? Aggiungilo a mano</button></div>
   </section>
+
+  <!-- Sfondo del modulo quando si apre come pannello alto (dalla scheda dell'album) -->
+  <div id="panel-backdrop" class="backdrop panel-backdrop" data-act="close" hidden></div>
 
   <!-- Aggiunta a mano e modifica di un album -->
   <section id="manual" class="screen overlay" hidden>
@@ -110,7 +128,35 @@
       <label>Titolo<input name="title" required autocomplete="off" /></label>
       <label>Artista<input name="artist" required autocomplete="off" /></label>
       <label>Anno<input name="year" inputmode="numeric" maxlength="4" pattern="\d{4}" title="Anno di 4 cifre" autocomplete="off" /></label>
-      <button class="primary" type="submit" id="form-submit">Aggiungi</button>
+      <label id="listened-field" hidden>Ascoltato il<input name="listened" type="date" /></label>
+      <label>Nota<textarea name="note" rows="2" maxlength="500" placeholder="Es. consigliato da Marco, sentito al bar…"></textarea></label>
+      <div class="info-fields">
+        <p class="hint">Brani e genere servono alla scheda e alle statistiche: di solito li trovo da solo, ma puoi correggerli o scriverli tu. Per la durata di un brano tocca l’orologio.</p>
+        <div class="tracks-edit">
+          <div class="te-head">
+            <span>Brani</span><span id="te-sum"></span>
+            <button type="button" class="icon-btn te-reset" data-act="tracks-reset" hidden
+              aria-label="Ripristina l’elenco ufficiale dei brani" title="Ripristina l’elenco ufficiale dei brani">
+              <svg viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/></svg>
+            </button>
+          </div>
+          <ol id="te-list" class="te-list"></ol>
+          <p class="status" id="te-status"></p>
+          <button type="button" class="ghost te-add" data-act="track-add">Aggiungi brano</button>
+        </div>
+        <div class="seg-row genre-row">
+          <span>Genere</span>
+          <button type="button" class="picker-btn" data-act="pick-genre" aria-haspopup="dialog" aria-label="Genere">
+            <span id="genre-label">Nessuno</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>
+          </button>
+          <input type="hidden" name="genre" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="ghost" data-act="form-cancel">Annulla</button>
+        <button class="primary" type="submit" id="form-submit">Aggiungi</button>
+      </div>
     </form>
   </section>
 
@@ -137,11 +183,27 @@
       <h2>Impostazioni</h2>
     </header>
     <div class="form">
-      <label class="switch-row">
-        <span>Tema scuro</span>
-        <input type="checkbox" id="theme-switch" role="switch" />
-        <i class="switch" aria-hidden="true"></i>
-      </label>
+      <button class="nav-row" data-act="open-stats">
+        <span>Statistiche</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6l6 6-6 6"/></svg>
+      </button>
+      <div class="seg-row">
+        <span>Tema</span>
+        <div class="seg" role="radiogroup" aria-label="Tema">
+          <button data-act="theme" data-key="dark" role="radio">Scuro</button>
+          <button data-act="theme" data-key="light" role="radio">Chiaro</button>
+          <button data-act="theme" data-key="system" role="radio">Sistema</button>
+        </div>
+      </div>
+      <div class="seg-row">
+        <span>Testo</span>
+        <div class="seg font-seg" role="radiogroup" aria-label="Dimensione del testo">
+          <button data-act="font" data-key="0.9" role="radio" aria-label="Piccolo" style="font-size:12px">A</button>
+          <button data-act="font" data-key="1" role="radio" aria-label="Normale" style="font-size:14px">A</button>
+          <button data-act="font" data-key="1.15" role="radio" aria-label="Grande" style="font-size:16.5px">A</button>
+          <button data-act="font" data-key="1.3" role="radio" aria-label="Molto grande" style="font-size:19px">A</button>
+        </div>
+      </div>
       <label class="switch-row">
         <span>Vista a schede</span>
         <input type="checkbox" id="view-switch" role="switch" />
@@ -150,8 +212,8 @@
       <div class="seg-row" id="cols-row" hidden>
         <span>Schede per riga</span>
         <div class="seg" role="radiogroup" aria-label="Schede per riga">
-          <button data-act="cols" data-cols="2" role="radio">2</button>
-          <button data-act="cols" data-cols="3" role="radio">3</button>
+          <button data-act="cols" data-key="2" role="radio">2</button>
+          <button data-act="cols" data-key="3" role="radio">3</button>
         </div>
       </div>
 
@@ -162,7 +224,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg>
         </button>
       </div>
-      <p class="hint app-hint">Se ne scegli una, nella scheda di ogni album compare «Cerca su …»: apre la ricerca di artista e titolo direttamente in quell’app. L’icona copia, invece, c’è sempre.</p>
+      <p class="hint app-hint">Se ne scegli una, nella scheda di ogni album compare «Cerca su …»: apre la ricerca di artista e titolo direttamente in quell’app. «Copia», invece, c’è sempre.</p>
 
       <h3 id="backup-section">Backup</h3>
       <p class="hint" id="backup-info"></p>
@@ -185,12 +247,51 @@
     </div>
   </section>
 
+  <!-- Statistiche -->
+  <section id="stats" class="screen overlay" hidden>
+    <header class="plain-bar">
+      <button class="icon-btn" data-act="close" aria-label="Indietro">
+        <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <h2>Statistiche</h2>
+    </header>
+    <div class="form stats" id="stats-body"></div>
+  </section>
+
   <!-- Dettaglio album -->
   <div id="sheet-backdrop" class="backdrop" data-act="close" hidden></div>
   <section id="sheet" class="sheet" hidden></section>
 
-  <div id="toast" class="toast" hidden></div>
+  <!-- Ghiera della durata di un brano (dal modulo) -->
+  <div id="dial-backdrop" class="backdrop dial-backdrop" data-act="dial-cancel" hidden></div>
+  <section id="dial" class="sheet dial-sheet" role="dialog" aria-modal="true" aria-labelledby="dial-title" hidden>
+    <p class="sheet-kicker" id="dial-title">Durata</p>
+    <div class="dial" id="dial-knob" role="slider" tabindex="0" aria-labelledby="dial-title"
+      aria-valuemin="0" aria-valuemax="5999" aria-valuenow="0">
+      <svg viewBox="0 0 240 240" aria-hidden="true">
+        <g id="dial-ticks" class="dial-ticks"></g>
+        <circle class="dial-track" cx="120" cy="120" r="88"/>
+        <path id="dial-arc" class="dial-arc" d=""/>
+        <circle id="dial-handle" class="dial-handle" cx="120" cy="32" r="11"/>
+      </svg>
+      <div class="dial-read"><b id="dial-value">00:00</b></div>
+    </div>
+    <div class="dial-steps">
+      <button type="button" data-act="dial-step" data-d="-60" aria-label="Meno un minuto">−1 min</button>
+      <button type="button" data-act="dial-step" data-d="-1" aria-label="Meno un secondo">−1 s</button>
+      <button type="button" data-act="dial-step" data-d="1" aria-label="Più un secondo">+1 s</button>
+      <button type="button" data-act="dial-step" data-d="60" aria-label="Più un minuto">+1 min</button>
+    </div>
+    <div class="dial-actions">
+      <button type="button" class="ghost" data-act="dial-cancel">Annulla</button>
+      <button type="button" class="primary" data-act="dial-ok">Fatto</button>
+    </div>
+  </section>
 
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <script src="lib.js"></script>
+  <script src="novita.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

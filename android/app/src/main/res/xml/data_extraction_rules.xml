@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Backup automatico di Android 12+ (backup Google e passaggio a un nuovo telefono): solo i dati di Ascolti,
+     cioè lista, impostazioni e ricerche recenti, che il plugin Preferences tiene in CapacitorStorage.xml.
+     Le copertine salvate (files/covers) e la cache si riscaricano: restano fuori. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="sharedpref" path="CapacitorStorage.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="sharedpref" path="CapacitorStorage.xml" />
+    </device-transfer>
+</data-extraction-rules>

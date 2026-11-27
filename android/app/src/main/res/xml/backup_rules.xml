@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Backup automatico fino ad Android 11: le stesse regole di data_extraction_rules.xml -->
+<full-backup-content>
+    <include domain="sharedpref" path="CapacitorStorage.xml" />
+</full-backup-content>
